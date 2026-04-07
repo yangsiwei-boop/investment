@@ -1,0 +1,150 @@
+package com.investment.controller;
+
+import com.investment.common.response.ApiResponse;
+import com.investment.dto.request.admin.UserStatusUpdateRequest;
+import com.investment.dto.request.admin.VerificationReviewRequest;
+import com.investment.dto.response.admin.AdminDashboardResponse;
+import com.investment.dto.response.admin.UserListResponse;
+import com.investment.dto.response.admin.VerificationDetailResponse;
+import com.investment.security.UserPrincipal;
+import com.investment.service.AdminService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * 后台管理控制器
+ *
+ * @author Investment Team
+ */
+@Slf4j
+@RestController
+@RequestMapping("/admin")
+@RequiredArgsConstructor
+@Tag(name = "后台管理", description = "后台管理相关接口")
+@SecurityRequirement(name = "Bearer")
+@PreAuthorize("hasRole('ADMIN')")
+public class AdminController {
+
+    private final AdminService adminService;
+
+    /**
+     * 获取仪表盘数据
+     *
+     * @return 仪表盘数据
+     */
+    @GetMapping("/dashboard")
+    @Operation(summary = "获取仪表盘数据", description = "获取后台管理仪表盘统计数据")
+    public ApiResponse<AdminDashboardResponse> getDashboard() {
+        log.info("Getting admin dashboard");
+
+        AdminDashboardResponse response = adminService.getDashboard();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 获取用户列表
+     *
+     * @param userType 用户类型
+     * @param status   状态
+     * @param keyword  关键词
+     * @param page     页码
+     * @param size     每页数量
+     * @return 用户列表
+     */
+    @GetMapping("/users")
+    @Operation(summary = "获取用户列表", description = "获取系统用户列表（支持筛选和搜索）")
+    public ApiResponse<Page<UserListResponse>> getUserList(
+            @RequestParam(required = false) String userType,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Getting user list");
+
+        Page<UserListResponse> users = adminService.getUserList(userType, status, keyword, page, size);
+        return ApiResponse.success(users);
+    }
+
+    /**
+     * 更新用户状态
+     *
+     * @param userId   用户ID
+     * @param request  请求
+     * @return 成功响应
+     */
+    @PutMapping("/users/{userId}/status")
+    @Operation(summary = "更新用户状态", description = "更新指定用户的状态（启用/禁用/封号）")
+    public ApiResponse<Void> updateUserStatus(
+            @PathVariable Long userId,
+            @Valid @RequestBody UserStatusUpdateRequest request) {
+        log.info("Updating user status: {}", userId);
+
+        adminService.updateUserStatus(userId, request);
+        return ApiResponse.success(null);
+    }
+
+    /**
+     * 获取待审核认证列表
+     *
+     * @param status 状态
+     * @param page   页码
+     * @param size   每页数量
+     * @return 认证列表
+     */
+    @GetMapping("/verifications")
+    @Operation(summary = "获取认证列表", description = "获取实名认证申请列表")
+    public ApiResponse<Page<VerificationDetailResponse>> getVerificationList(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Getting verification list");
+
+        Page<VerificationDetailResponse> verifications = adminService.getVerificationList(status, page, size);
+        return ApiResponse.success(verifications);
+    }
+
+    /**
+     * 获取认证详情
+     *
+     * @param verificationId 认证ID
+     * @return 认证详情
+     */
+    @GetMapping("/verifications/{verificationId}")
+    @Operation(summary = "获取认证详情", description = "获取指定认证申请的详细信息")
+    public ApiResponse<VerificationDetailResponse> getVerificationDetail(
+            @PathVariable Long verificationId) {
+        log.info("Getting verification detail: {}", verificationId);
+
+        VerificationDetailResponse response = adminService.getVerificationDetail(verificationId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 审核认证
+     *
+     * @param verificationId 认证ID
+     * @param request       请求
+     * @param principal     当前用户
+     * @return 认证详情
+     */
+    @PostMapping("/verifications/{verificationId}/review")
+    @Operation(summary = "审核认证", description = "审核实名认证申请")
+    public ApiResponse<VerificationDetailResponse> reviewVerification(
+            @PathVariable Long verificationId,
+            @Valid @RequestBody VerificationReviewRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("Reviewing verification: {}, admin: {}", verificationId, principal.getId());
+
+        VerificationDetailResponse response = adminService.reviewVerification(
+                verificationId, principal.getId(), request);
+        return ApiResponse.success(response);
+    }
+}
