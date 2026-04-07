@@ -4,6 +4,7 @@ import com.investment.common.exception.BusinessException;
 import com.investment.common.exception.ErrorCode;
 import com.investment.entity.User;
 import com.investment.repository.UserRepository;
+import com.investment.service.TokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final TokenService tokenService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -41,6 +43,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
+                // 检查Token是否在黑名单中
+                if (tokenService.isBlacklisted(jwt)) {
+                    log.warn("Token is blacklisted: {}", jwt.substring(0, 20) + "...");
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+
                 Long userId = jwtTokenProvider.getUserIdFromToken(jwt);
                 String userType = jwtTokenProvider.getUserTypeFromToken(jwt);
 

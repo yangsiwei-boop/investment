@@ -9,6 +9,7 @@ import com.investment.security.UserPrincipal;
 import com.investment.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -77,15 +78,31 @@ public class AuthController {
      * 用户登出
      *
      * @param principal 当前用户
+     * @param request HTTP请求（用于获取Token）
      * @return 成功响应
      */
     @PostMapping("/logout")
-    @Operation(summary = "用户登出", description = "用户退出登录")
-    public ApiResponse<Void> logout(@AuthenticationPrincipal UserPrincipal principal) {
+    @Operation(summary = "用户登出", description = "用户退出登录，将Token加入黑名单")
+    public ApiResponse<Void> logout(
+            @AuthenticationPrincipal UserPrincipal principal,
+            HttpServletRequest request) {
         if (principal != null) {
-            authService.logout(principal.getId());
+            // 从请求头获取Token
+            String token = getJwtFromRequest(request);
+            authService.logout(principal.getId(), token);
         }
         return ApiResponse.success("登出成功", null);
+    }
+
+    /**
+     * 从请求头中获取JWT Token
+     */
+    private String getJwtFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 
     /**

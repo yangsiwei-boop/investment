@@ -1,8 +1,5 @@
 package com.investment.common.constant;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * Redis缓存键常量
  *
@@ -14,6 +11,14 @@ public class CacheConstants {
      * 缓存键前缀
      */
     public static final String CACHE_PREFIX = "investment:";
+
+    /**
+     * Token缓存
+     */
+    public static final String TOKEN_PREFIX = CACHE_PREFIX + "token:";
+    public static final String REFRESH_TOKEN_PREFIX = CACHE_PREFIX + "refresh_token:";
+    public static final String TOKEN_BLACKLIST_PREFIX = CACHE_PREFIX + "blacklist:";
+    public static final String USER_INFO_PREFIX = CACHE_PREFIX + "user_info:";
 
     /**
      * 用户缓存
@@ -52,6 +57,12 @@ public class CacheConstants {
      * 验证码缓存
      */
     public static final String VERIFICATION_CODE_CACHE = CACHE_PREFIX + "verification_codes";
+
+    /**
+     * Token过期时间（秒）
+     */
+    public static final long ACCESS_TOKEN_TTL = 7200; // 2小时
+    public static final long REFRESH_TOKEN_TTL = 604800; // 7天
 
     /**
      * 默认缓存过期时间（秒）

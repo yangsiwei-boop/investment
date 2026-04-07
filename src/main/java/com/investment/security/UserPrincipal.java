@@ -29,6 +29,10 @@ public class UserPrincipal implements UserDetails {
     private String status;
     private Boolean isVerified;
 
+    public void setUserType(String userType) {
+        this.userType = userType;
+    }
+
     /**
      * 从User实体创建UserPrincipal
      */

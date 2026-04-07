@@ -1,5 +1,6 @@
 package com.investment.service;
 
+import com.investment.common.constant.CacheConstants;
 import com.investment.common.exception.BusinessException;
 import com.investment.common.exception.ErrorCode;
 import com.investment.dto.request.auth.LoginRequest;
@@ -28,8 +29,7 @@ import java.time.LocalDateTime;
  *
  * @author Investment Team
  */
-@Slf4j
-@Service
+@Slf4j@Service
 @RequiredArgsConstructor
 public class AuthService {
 
@@ -37,6 +37,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final TokenService tokenService;
 
     /**
      * 用户注册
@@ -71,6 +72,10 @@ public class AuthService {
         String token = jwtTokenProvider.generateAccessToken(user.getId(), user.getUserType().name());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
+        // 缓存Token到Redis
+        tokenService.cacheAccessToken(user.getId(), token, CacheConstants.ACCESS_TOKEN_TTL);
+        tokenService.cacheRefreshToken(user.getId(), refreshToken, CacheConstants.REFRESH_TOKEN_TTL);
+
         log.info("User registered successfully: userId={}", user.getId());
 
         return RegisterResponse.builder()
@@ -78,7 +83,7 @@ public class AuthService {
                 .token(token)
                 .refreshToken(refreshToken)
                 .userType(user.getUserType().name())
-                .expiresAt(System.currentTimeMillis() + 7200000L) // 2小时后过期
+                .expiresAt(System.currentTimeMillis() + CacheConstants.ACCESS_TOKEN_TTL * 1000)
                 .build();
     }
 
@@ -114,20 +119,28 @@ public class AuthService {
         String token = jwtTokenProvider.generateAccessToken(user.getId(), user.getUserType().name());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
+        // 缓存Token到Redis
+        tokenService.cacheAccessToken(user.getId(), token, CacheConstants.ACCESS_TOKEN_TTL);
+        tokenService.cacheRefreshToken(user.getId(), refreshToken, CacheConstants.REFRESH_TOKEN_TTL);
+
+        // 缓存用户信息
+        LoginResponse.UserInfo userInfo = LoginResponse.UserInfo.builder()
+                .id(user.getId())
+                .phone(user.getPhone())
+                .userType(user.getUserType().name())
+                .realName(user.getRealName())
+                .avatarUrl(user.getAvatarUrl())
+                .isVerified(user.getIsVerified())
+                .status(user.getStatus().name())
+                .build();
+        tokenService.cacheUserInfo(user.getId(), userInfo, CacheConstants.ACCESS_TOKEN_TTL);
+
         log.info("User logged in successfully: userId={}", user.getId());
 
         return LoginResponse.builder()
                 .token(token)
                 .refreshToken(refreshToken)
-                .user(LoginResponse.UserInfo.builder()
-                        .id(user.getId())
-                        .phone(user.getPhone())
-                        .userType(user.getUserType().name())
-                        .realName(user.getRealName())
-                        .avatarUrl(user.getAvatarUrl())
-                        .isVerified(user.getIsVerified())
-                        .status(user.getStatus().name())
-                        .build())
+                .user(userInfo)
                 .build();
     }
 
@@ -143,20 +156,41 @@ public class AuthService {
         }
 
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+
+        // 验证RefreshToken是否在Redis中有效
+        if (!tokenService.validateRefreshToken(userId, refreshToken)) {
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID);
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return jwtTokenProvider.generateAccessToken(user.getId(), user.getUserType().name());
+        String newToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUserType().name());
+
+        // 缓存新Token
+        tokenService.cacheAccessToken(user.getId(), newToken, CacheConstants.ACCESS_TOKEN_TTL);
+
+        return newToken;
     }
 
     /**
      * 用户登出
      *
      * @param userId 用户ID
+     * @param token  当前Token
      */
-    public void logout(Long userId) {
+    public void logout(Long userId, String token) {
         log.info("User logging out: userId={}", userId);
-        // 可以在这里实现Token黑名单等逻辑
+
+        // 将当前Token加入黑名单
+        if (token != null) {
+            tokenService.addToBlacklist(token, CacheConstants.ACCESS_TOKEN_TTL);
+        }
+
+        // 清除用户的所有Token
+        tokenService.clearUserTokens(userId);
+
+        log.info("User logged out successfully: userId={}", userId);
     }
 
     /**
@@ -177,6 +211,9 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
+
+        // 清除用户Token缓存，强制重新登录
+        tokenService.clearUserTokens(userId);
 
         log.info("Password changed for userId={}", userId);
     }
