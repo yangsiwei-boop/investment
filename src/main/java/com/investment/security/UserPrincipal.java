@@ -79,6 +79,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return "active".equalsIgnoreCase(status);
+        // 允许 ACTIVE 和 PENDING 状态的用户登录
+        return "active".equalsIgnoreCase(status) || "pending".equalsIgnoreCase(status);
     }
 }

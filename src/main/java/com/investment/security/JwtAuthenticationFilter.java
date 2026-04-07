@@ -3,6 +3,7 @@ package com.investment.security;
 import com.investment.common.exception.BusinessException;
 import com.investment.common.exception.ErrorCode;
 import com.investment.entity.User;
+import com.investment.enums.UserStatus;
 import com.investment.repository.UserRepository;
 import com.investment.service.TokenService;
 import jakarta.servlet.FilterChain;
@@ -56,9 +57,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 User user = userRepository.findById(userId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-                // 检查用户状态
-                if (!"active".equalsIgnoreCase(user.getStatus().name())) {
-                    throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+                // 检查用户状态（只禁止BANNED状态）
+                if (user.getStatus() == UserStatus.BANNED) {
+                    throw new BusinessException(ErrorCode.ACCOUNT_BANNED);
                 }
 
                 UserPrincipal principal = UserPrincipal.create(user);
