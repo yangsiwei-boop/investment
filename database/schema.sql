@@ -1,5 +1,6 @@
 -- 投融资对接平台数据库建表脚本
 -- 基于实体类生成
+-- 更新时间: 2026-04-08
 
 -- 创建数据库（如果不存在）
 CREATE DATABASE IF NOT EXISTS investment DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -232,7 +233,6 @@ CREATE TABLE IF NOT EXISTS applications (
     project_id BIGINT NOT NULL COMMENT '项目ID',
     entrepreneur_user_id BIGINT NOT NULL COMMENT '融资用户ID',
     teaser_id BIGINT COMMENT 'Teaser ID',
-    bp_id BIGINT COMMENT 'BP ID',
     contact_info VARCHAR(500) COMMENT '联系信息',
     application_status VARCHAR(20) DEFAULT 'PENDING' COMMENT '申请状态: PENDING/APPROVED/REJECTED/EXPIRED',
     application_reason TEXT COMMENT '申请理由',
@@ -256,7 +256,7 @@ CREATE TABLE IF NOT EXISTS applications (
     INDEX idx_application_status (application_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='申请表';
 
--- 8. 问答记录表
+-- 8. 问答记录表 (已更新 - 添加缺失字段)
 CREATE TABLE IF NOT EXISTS qa_records (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     project_id BIGINT NOT NULL COMMENT '项目ID',
@@ -320,7 +320,7 @@ CREATE TABLE IF NOT EXISTS user_verifications (
     INDEX idx_verification_status (verification_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='实名认证表';
 
--- 10. 通知表
+-- 10. 通知表 (已更新 - 添加缺失字段)
 CREATE TABLE IF NOT EXISTS notifications (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL COMMENT '接收用户ID',
@@ -366,20 +366,24 @@ CREATE TABLE IF NOT EXISTS privacy_settings (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='隐私设置表';
 
--- 12. 收藏表（投资人收藏Teaser）
+-- 12. 收藏表 (已更新 - 添加分组和备注功能)
 CREATE TABLE IF NOT EXISTS favorites (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL COMMENT '用户ID',
     teaser_id BIGINT NOT NULL COMMENT 'Teaser ID',
+    group_name VARCHAR(100) COMMENT '分组名称',
+    note TEXT COMMENT '收藏备注',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (teaser_id) REFERENCES teasers(id),
     UNIQUE KEY uk_user_teaser (user_id, teaser_id),
     INDEX idx_user_id (user_id),
-    INDEX idx_teaser_id (teaser_id)
+    INDEX idx_teaser_id (teaser_id),
+    INDEX idx_group_name (group_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收藏表';
 
--- 13. 投资分析表
+-- 13. 投资分析表 (已更新 - 添加分析类型)
 CREATE TABLE IF NOT EXISTS investment_analyses (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     teaser_id BIGINT NOT NULL COMMENT 'Teaser ID',
@@ -397,7 +401,7 @@ CREATE TABLE IF NOT EXISTS investment_analyses (
     INDEX idx_investor_user_id (investor_user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='投资分析表';
 
--- 14. 浏览记录表
+-- 14. 浏览记录表 (已更新 - 添加缺失字段)
 CREATE TABLE IF NOT EXISTS view_histories (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL COMMENT '用户ID',
@@ -410,6 +414,7 @@ CREATE TABLE IF NOT EXISTS view_histories (
     FOREIGN KEY (project_id) REFERENCES projects(id),
     INDEX idx_user_id (user_id),
     INDEX idx_teaser_id (teaser_id),
+    INDEX idx_project_id (project_id),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='浏览记录表';
 
@@ -427,3 +432,105 @@ CREATE TABLE IF NOT EXISTS investor_questions (
     INDEX idx_category (category),
     INDEX idx_is_template (is_template)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='投资人问题库表';
+
+-- 16. 角色表
+CREATE TABLE IF NOT EXISTS roles (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    role_code VARCHAR(50) NOT NULL UNIQUE COMMENT '角色编码',
+    role_name VARCHAR(100) NOT NULL COMMENT '角色名称',
+    role_level INT DEFAULT 0 COMMENT '角色级别',
+    description VARCHAR(500) COMMENT '角色描述',
+    is_enabled BOOLEAN DEFAULT TRUE COMMENT '是否启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_role_code (role_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色表';
+
+-- 17. 权限表
+CREATE TABLE IF NOT EXISTS permissions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    permission_code VARCHAR(50) NOT NULL UNIQUE COMMENT '权限编码',
+    permission_name VARCHAR(100) NOT NULL COMMENT '权限名称',
+    permission_type VARCHAR(20) COMMENT '权限类型',
+    module VARCHAR(50) COMMENT '所属模块',
+    description VARCHAR(500) COMMENT '权限描述',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_permission_code (permission_code),
+    INDEX idx_module (module)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限表';
+
+-- 18. 用户角色关联表
+CREATE TABLE IF NOT EXISTS user_roles (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    role_id BIGINT NOT NULL COMMENT '角色ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (role_id) REFERENCES roles(id),
+    UNIQUE KEY uk_user_role (user_id, role_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_role_id (role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户角色关联表';
+
+-- 19. 角色权限关联表
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    role_id BIGINT NOT NULL COMMENT '角色ID',
+    permission_id BIGINT NOT NULL COMMENT '权限ID',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES roles(id),
+    FOREIGN KEY (permission_id) REFERENCES permissions(id),
+    UNIQUE KEY uk_role_permission (role_id, permission_id),
+    INDEX idx_role_id (role_id),
+    INDEX idx_permission_id (permission_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色权限关联表';
+
+-- 20. 系统配置表
+CREATE TABLE IF NOT EXISTS system_configs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    config_key VARCHAR(100) NOT NULL UNIQUE COMMENT '配置键',
+    config_value TEXT COMMENT '配置值',
+    config_type VARCHAR(20) DEFAULT 'STRING' COMMENT '配置类型',
+    description VARCHAR(500) COMMENT '配置描述',
+    is_enabled BOOLEAN DEFAULT TRUE COMMENT '是否启用',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_config_key (config_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置表';
+
+-- 21. 操作日志表
+CREATE TABLE IF NOT EXISTS operation_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT COMMENT '操作用户ID',
+    operation_type VARCHAR(50) NOT NULL COMMENT '操作类型',
+    operation_desc VARCHAR(500) COMMENT '操作描述',
+    target_type VARCHAR(50) COMMENT '目标类型',
+    target_id BIGINT COMMENT '目标ID',
+    request_method VARCHAR(10) COMMENT '请求方法',
+    request_url VARCHAR(500) COMMENT '请求URL',
+    request_params TEXT COMMENT '请求参数',
+    response_code INT COMMENT '响应状态码',
+    ip_address VARCHAR(45) COMMENT 'IP地址',
+    user_agent VARCHAR(500) COMMENT '用户代理',
+    execution_time INT COMMENT '执行时间(ms)',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_operation_type (operation_type),
+    INDEX idx_target (target_type, target_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+
+-- 22. 统计表
+CREATE TABLE IF NOT EXISTS statistics (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    stat_date DATE NOT NULL COMMENT '统计日期',
+    stat_type VARCHAR(20) NOT NULL COMMENT '统计类型',
+    metric_key VARCHAR(50) NOT NULL COMMENT '指标key',
+    metric_value DECIMAL(20,2) NOT NULL COMMENT '指标值',
+    dimensions JSON COMMENT '维度信息',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_stat (stat_date, stat_type, metric_key),
+    INDEX idx_stat_date (stat_date),
+    INDEX idx_stat_type (stat_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='统计表';

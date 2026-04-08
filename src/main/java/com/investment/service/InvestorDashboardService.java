@@ -25,6 +25,8 @@ public class InvestorDashboardService {
     private final ApplicationRepository applicationRepository;
     private final QaRecordRepository qaRecordRepository;
     private final InvestmentAnalysisRepository investmentAnalysisRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final ViewHistoryRepository viewHistoryRepository;
 
     /**
      * 获取投资人工作台首页数据
@@ -80,16 +82,14 @@ public class InvestorDashboardService {
      * 统计已浏览的Teaser数量
      */
     private Long countViewedTeasers(Long userId) {
-        // TODO: 实现浏览统计
-        return 0L;
+        return viewHistoryRepository.countByUserId(userId);
     }
 
     /**
      * 统计收藏数量
      */
     private Long countFavorites(Long userId) {
-        // TODO: 实现收藏统计
-        return 0L;
+        return favoriteRepository.countByUserId(userId);
     }
 
     /**

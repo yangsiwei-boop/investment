@@ -5,12 +5,12 @@ import com.investment.common.exception.ErrorCode;
 import com.investment.dto.request.investor.TeaserSearchRequest;
 import com.investment.dto.response.investor.TeaserSearchResponse;
 import com.investment.dto.response.investor.TeaserDetailResponse;
-import com.investment.entity.InvestorActivity;
 import com.investment.entity.Project;
 import com.investment.entity.Teaser;
+import com.investment.entity.ViewHistory;
 import com.investment.enums.TeaserStatus;
 import com.investment.repository.TeaserRepository;
-import com.investment.repository.InvestorActivityRepository;
+import com.investment.repository.ViewHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,7 +38,7 @@ import java.util.List;
 public class TeaserSearchService {
 
     private final TeaserRepository teaserRepository;
-    private final InvestorActivityRepository activityRepository;
+    private final ViewHistoryRepository viewHistoryRepository;
 
     /**
      * 搜索Teaser
@@ -114,17 +114,11 @@ public class TeaserSearchService {
      * 记录浏览活动
      */
     private void recordViewActivity(Long investorId, Long teaserId) {
-        // 检查是否已存在浏览记录
-        if (activityRepository.existsByInvestorUserIdAndTeaserIdAndActivityType(investorId, teaserId, "VIEW")) {
-            return; // 已存在，不重复记录
-        }
-
-        InvestorActivity activity = InvestorActivity.builder()
-                .investorUserId(investorId)
+        ViewHistory viewHistory = ViewHistory.builder()
+                .userId(investorId)
                 .teaserId(teaserId)
-                .activityType("VIEW")
                 .build();
-        activityRepository.save(activity);
+        viewHistoryRepository.save(viewHistory);
     }
 
     /**

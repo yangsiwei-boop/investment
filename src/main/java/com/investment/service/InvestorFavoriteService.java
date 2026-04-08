@@ -4,11 +4,11 @@ import com.investment.common.exception.BusinessException;
 import com.investment.common.exception.ErrorCode;
 import com.investment.dto.request.investor.FavoriteRequest;
 import com.investment.dto.response.investor.FavoriteResponse;
-import com.investment.entity.InvestorActivity;
+import com.investment.entity.Favorite;
 import com.investment.entity.Project;
 import com.investment.entity.Teaser;
 import com.investment.enums.TeaserStatus;
-import com.investment.repository.InvestorActivityRepository;
+import com.investment.repository.FavoriteRepository;
 import com.investment.repository.TeaserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -31,7 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InvestorFavoriteService {
 
-    private final InvestorActivityRepository activityRepository;
+    private final FavoriteRepository favoriteRepository;
     private final TeaserRepository teaserRepository;
 
     /**
@@ -54,26 +55,22 @@ public class InvestorFavoriteService {
         }
 
         // 检查是否已收藏
-        if (activityRepository.existsByInvestorUserIdAndTeaserIdAndActivityType(
-                investorId, request.getTeaserId(), "FAVORITE")) {
+        if (favoriteRepository.existsByUserIdAndTeaserId(investorId, request.getTeaserId())) {
             throw new BusinessException(ErrorCode.ALREADY_FAVORITED);
         }
 
         // 创建收藏记录
-        InvestorActivity activity = InvestorActivity.builder()
-                .investorUserId(investorId)
+        Favorite favorite = Favorite.builder()
+                .userId(investorId)
                 .teaserId(request.getTeaserId())
-                .activityType("FAVORITE")
-                .groupName(request.getGroupName())
-                .notes(request.getNote())
                 .build();
-        activityRepository.save(activity);
+        favoriteRepository.save(favorite);
 
         // 增加收藏计数
         teaser.setFavoriteCount(teaser.getFavoriteCount() + 1);
         teaserRepository.save(teaser);
 
-        return convertToFavoriteResponse(activity, teaser);
+        return convertToFavoriteResponse(favorite, teaser);
     }
 
     /**
@@ -86,11 +83,11 @@ public class InvestorFavoriteService {
     public void removeFavorite(Long investorId, Long teaserId) {
         log.info("Removing favorite for investor: {}, teaser: {}", investorId, teaserId);
 
-        InvestorActivity activity = activityRepository
-                .findByInvestorUserIdAndTeaserIdAndActivityType(investorId, teaserId, "FAVORITE")
+        Favorite favorite = favoriteRepository
+                .findByUserIdAndTeaserId(investorId, teaserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FAVORITE_NOT_FOUND));
 
-        activityRepository.delete(activity);
+        favoriteRepository.delete(favorite);
 
         // 减少收藏计数
         Teaser teaser = teaserRepository.findById(teaserId).orElse(null);
@@ -112,12 +109,11 @@ public class InvestorFavoriteService {
         log.info("Getting favorite list for investor: {}", investorId);
 
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<InvestorActivity> activityPage = activityRepository
-                .findByInvestorUserIdAndActivityTypeOrderByCreatedAtDesc(investorId, "FAVORITE", pageable);
+        Page<Favorite> favoritePage = favoriteRepository.findByUserIdOrderByCreatedAtDesc(investorId, pageable);
 
-        return activityPage.map(activity -> {
-            Teaser teaser = activity.getTeaserId() != null ? teaserRepository.findById(activity.getTeaserId()).orElse(null) : null;
-            return convertToFavoriteResponse(activity, teaser);
+        return favoritePage.map(favorite -> {
+            Teaser teaser = teaserRepository.findById(favorite.getTeaserId()).orElse(null);
+            return convertToFavoriteResponse(favorite, teaser);
         });
     }
 
@@ -129,12 +125,11 @@ public class InvestorFavoriteService {
      * @return 是否已收藏
      */
     public boolean isFavorited(Long investorId, Long teaserId) {
-        return activityRepository.existsByInvestorUserIdAndTeaserIdAndActivityType(
-                investorId, teaserId, "FAVORITE");
+        return favoriteRepository.existsByUserIdAndTeaserId(investorId, teaserId);
     }
 
     /**
-     * 更新收藏分组
+     * 更新收藏分组（暂不支持）
      *
      * @param investorId 投资人ID
      * @param teaserId   Teaser ID
@@ -142,12 +137,9 @@ public class InvestorFavoriteService {
      */
     @Transactional
     public void updateFavoriteGroup(Long investorId, Long teaserId, String groupName) {
-        InvestorActivity activity = activityRepository
-                .findByInvestorUserIdAndTeaserIdAndActivityType(investorId, teaserId, "FAVORITE")
-                .orElseThrow(() -> new BusinessException(ErrorCode.FAVORITE_NOT_FOUND));
-
-        activity.setGroupName(groupName);
-        activityRepository.save(activity);
+        // 数据库favorites表中没有group_name字段，暂不支持分组功能
+        log.warn("分组功能暂不支持，需要先在数据库favorites表中添加group_name列");
+        throw new BusinessException(ErrorCode.FEATURE_NOT_AVAILABLE, "收藏分组功能暂不支持");
     }
 
     /**
@@ -157,27 +149,38 @@ public class InvestorFavoriteService {
      * @return 分组列表
      */
     public List<String> getFavoriteGroups(Long investorId) {
-        return activityRepository.findDistinctGroupNamesByInvestorUserIdAndActivityType(
-                investorId, "FAVORITE");
+        // 数据库favorites表中没有group_name字段，暂不支持分组功能
+        log.warn("分组功能暂不支持，需要先在数据库favorites表中添加group_name列");
+        return Collections.emptyList();
+    }
+
+    /**
+     * 获取收藏数量
+     *
+     * @param investorId 投资人ID
+     * @return 收藏数量
+     */
+    public long getFavoriteCount(Long investorId) {
+        return favoriteRepository.countByUserId(investorId);
     }
 
     /**
      * 转换为收藏响应
      */
-    private FavoriteResponse convertToFavoriteResponse(InvestorActivity activity, Teaser teaser) {
+    private FavoriteResponse convertToFavoriteResponse(Favorite favorite, Teaser teaser) {
         Project project = teaser != null ? teaser.getProject() : null;
 
         return FavoriteResponse.builder()
-                .id(activity.getId())
-                .teaserId(activity.getTeaserId())
+                .id(favorite.getId())
+                .teaserId(favorite.getTeaserId())
                 .teaserTitle(teaser != null ? teaser.getTitle() : null)
                 .teaserSummary(teaser != null ? teaser.getAiSummary() : null)
                 .industry(project != null && project.getIndustry() != null ? project.getIndustry().name() : null)
                 .financingStage(project != null && project.getFinancingStage() != null ? project.getFinancingStage().name() : null)
                 .financingAmount(project != null ? project.getFinancingAmount() : null)
-                .groupName(activity.getGroupName())
-                .note(activity.getNotes())
-                .createdAt(activity.getCreatedAt())
+                .groupName(null) // 暂不支持分组
+                .note(null) // 暂不支持备注
+                .createdAt(favorite.getCreatedAt())
                 .build();
     }
 }

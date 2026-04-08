@@ -23,7 +23,7 @@ public interface InvestmentAnalysisRepository extends JpaRepository<InvestmentAn
      * 根据Teaser ID查找分析记录
      *
      * @param teaserId Teaser ID
-     * @return 分析记录
+     * @return 分析记录列表
      */
     List<InvestmentAnalysis> findByTeaserIdOrderByCreatedAtDesc(Long teaserId);
 
@@ -31,7 +31,7 @@ public interface InvestmentAnalysisRepository extends JpaRepository<InvestmentAn
      * 根据投资人ID查找分析记录
      *
      * @param investorUserId 投资人ID
-     * @param pageable 分页参数
+     * @param pageable       分页参数
      * @return 分析记录分页列表
      */
     Page<InvestmentAnalysis> findByInvestorUserIdOrderByCreatedAtDesc(Long investorUserId, Pageable pageable);
@@ -39,21 +39,11 @@ public interface InvestmentAnalysisRepository extends JpaRepository<InvestmentAn
     /**
      * 根据Teaser ID和投资人ID查找分析记录
      *
-     * @param teaserId Teaser ID
+     * @param teaserId       Teaser ID
      * @param investorUserId 投资人ID
      * @return 分析记录
      */
     Optional<InvestmentAnalysis> findByTeaserIdAndInvestorUserId(Long teaserId, Long investorUserId);
-
-    /**
-     * 查找指定项目的所有分析记录
-     *
-     * @param projectId 项目ID
-     * @param pageable 分页参数
-     * @return 分析记录分页列表
-     */
-    @Query("SELECT ia FROM InvestmentAnalysis ia WHERE ia.teaser.project.id = :projectId ORDER BY ia.createdAt DESC")
-    Page<InvestmentAnalysis> findByProjectId(@Param("projectId") Long projectId, Pageable pageable);
 
     /**
      * 统计投资人的分析数量
@@ -61,7 +51,7 @@ public interface InvestmentAnalysisRepository extends JpaRepository<InvestmentAn
      * @param investorUserId 投资人ID
      * @return 数量
      */
-    Long countByInvestorUserId(Long investorUserId);
+    long countByInvestorUserId(Long investorUserId);
 
     /**
      * 统计Teaser的分析数量
@@ -69,20 +59,20 @@ public interface InvestmentAnalysisRepository extends JpaRepository<InvestmentAn
      * @param teaserId Teaser ID
      * @return 数量
      */
-    Long countByTeaserId(Long teaserId);
+    long countByTeaserId(Long teaserId);
 
     /**
-     * 查找综合评分最高的分析
+     * 查找评分最高的分析
      *
      * @param teaserId Teaser ID
      * @return 分析记录
      */
-    Optional<InvestmentAnalysis> findFirstByTeaserIdOrderByOverallScoreDesc(Long teaserId);
+    Optional<InvestmentAnalysis> findFirstByTeaserIdOrderByScoreDesc(Long teaserId);
 
     /**
      * 检查是否存在指定Teaser和投资人的分析
      *
-     * @param teaserId Teaser ID
+     * @param teaserId       Teaser ID
      * @param investorUserId 投资人ID
      * @return 是否存在
      */

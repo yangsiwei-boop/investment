@@ -35,6 +35,10 @@ logging:
     org.hibernate.SQL: DEBUG
 
 # Development settings
+sync:
+  database:
+    enabled: true
+
 jwt:
   secret: dev-secret-key-for-jwt-token-generation-must-be-at-least-256-bits-long
 

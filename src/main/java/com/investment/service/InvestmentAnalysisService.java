@@ -1,12 +1,13 @@
 package com.investment.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.investment.common.exception.BusinessException;
 import com.investment.common.exception.ErrorCode;
 import com.investment.dto.request.investor.AnalysisRequest;
 import com.investment.dto.response.investor.AnalysisResponse;
 import com.investment.entity.InvestmentAnalysis;
 import com.investment.entity.Teaser;
-import com.investment.entity.User;
 import com.investment.enums.TeaserStatus;
 import com.investment.repository.InvestmentAnalysisRepository;
 import com.investment.repository.TeaserRepository;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -37,6 +39,7 @@ public class InvestmentAnalysisService {
     private final InvestmentAnalysisRepository analysisRepository;
     private final TeaserRepository teaserRepository;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * 创建投资分析
@@ -57,9 +60,10 @@ public class InvestmentAnalysisService {
             throw new BusinessException(ErrorCode.TEASER_NOT_AVAILABLE);
         }
 
-        // 获取投资人
-        User investor = userRepository.findById(investorId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        // 检查用户是否存在
+        if (!userRepository.existsById(investorId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
 
         // 检查是否已有分析
         if (analysisRepository.findByTeaserIdAndInvestorUserId(request.getTeaserId(), investorId).isPresent()) {
@@ -68,9 +72,8 @@ public class InvestmentAnalysisService {
 
         // 创建分析记录
         InvestmentAnalysis analysis = InvestmentAnalysis.builder()
-                .teaser(teaser)
-                .investorUser(investor)
-                .isAiGenerated(true)
+                .teaserId(request.getTeaserId())
+                .investorUserId(investorId)
                 .analysisType("basic")
                 .build();
 
@@ -79,7 +82,7 @@ public class InvestmentAnalysisService {
         // 模拟AI分析（实际项目中应该调用AI服务）
         performMockAnalysis(analysis);
 
-        return convertToResponse(analysis);
+        return convertToResponse(analysis, teaser);
     }
 
     /**
@@ -94,11 +97,12 @@ public class InvestmentAnalysisService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANALYSIS_NOT_FOUND));
 
         // 验证权限
-        if (!analysis.getInvestorUser().getId().equals(investorId)) {
+        if (!analysis.getInvestorUserId().equals(investorId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        return convertToResponse(analysis);
+        Teaser teaser = teaserRepository.findById(analysis.getTeaserId()).orElse(null);
+        return convertToResponse(analysis, teaser);
     }
 
     /**
@@ -113,7 +117,10 @@ public class InvestmentAnalysisService {
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<InvestmentAnalysis> analysisPage = analysisRepository.findByInvestorUserIdOrderByCreatedAtDesc(investorId, pageable);
 
-        return analysisPage.map(this::convertToResponse);
+        return analysisPage.map(analysis -> {
+            Teaser teaser = teaserRepository.findById(analysis.getTeaserId()).orElse(null);
+            return convertToResponse(analysis, teaser);
+        });
     }
 
     /**
@@ -127,7 +134,8 @@ public class InvestmentAnalysisService {
         InvestmentAnalysis analysis = analysisRepository.findByTeaserIdAndInvestorUserId(teaserId, investorId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANALYSIS_NOT_FOUND));
 
-        return convertToResponse(analysis);
+        Teaser teaser = teaserRepository.findById(teaserId).orElse(null);
+        return convertToResponse(analysis, teaser);
     }
 
     /**
@@ -143,14 +151,15 @@ public class InvestmentAnalysisService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANALYSIS_NOT_FOUND));
 
         // 验证权限
-        if (!analysis.getInvestorUser().getId().equals(investorId)) {
+        if (!analysis.getInvestorUserId().equals(investorId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
         // 模拟AI分析
         performMockAnalysis(analysis);
 
-        return convertToResponse(analysis);
+        Teaser teaser = teaserRepository.findById(analysis.getTeaserId()).orElse(null);
+        return convertToResponse(analysis, teaser);
     }
 
     /**
@@ -165,7 +174,7 @@ public class InvestmentAnalysisService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANALYSIS_NOT_FOUND));
 
         // 验证权限
-        if (!analysis.getInvestorUser().getId().equals(investorId)) {
+        if (!analysis.getInvestorUserId().equals(investorId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
@@ -176,54 +185,73 @@ public class InvestmentAnalysisService {
      * 模拟AI分析
      */
     private void performMockAnalysis(InvestmentAnalysis analysis) {
-        // 模拟分析过程（实际项目中应该调用AI服务）
         Random random = new Random();
 
         // 生成随机评分
-        int overallScore = 60 + random.nextInt(30);
+        double score = 60 + random.nextInt(30);
 
         // 生成评分等级
-        String overallVerdict;
-        if (overallScore >= 85) {
-            overallVerdict = "excellent";
-        } else if (overallScore >= 70) {
-            overallVerdict = "good";
-        } else if (overallScore >= 55) {
-            overallVerdict = "average";
-        } else if (overallScore >= 40) {
-            overallVerdict = "below_average";
+        String recommendation;
+        if (score >= 85) {
+            recommendation = "excellent";
+        } else if (score >= 70) {
+            recommendation = "good";
+        } else if (score >= 55) {
+            recommendation = "average";
+        } else if (score >= 40) {
+            recommendation = "below_average";
         } else {
-            overallVerdict = "poor";
+            recommendation = "poor";
         }
 
-        // 更新分析结果
-        analysis.setOverallScore(overallScore);
-        analysis.setOverallVerdict(overallVerdict);
-        analysis.setIndustryAnalysisScore(60 + random.nextInt(30));
-        analysis.setIndustryAnalysisText("行业市场空间广阔，具有良好的发展前景。市场规模持续扩大，行业竞争格局相对稳定。");
-        analysis.setTeamAnalysisScore(60 + random.nextInt(30));
-        analysis.setTeamAnalysisText("创始团队经验丰富，核心成员具有相关行业背景。团队执行力强，组织架构清晰。");
-        analysis.setTechnologyAnalysisScore(60 + random.nextInt(30));
-        analysis.setTechnologyAnalysisText("技术方案具有创新性，核心技术有一定壁垒。研发投入持续，技术迭代能力强。");
-        analysis.setCompetitivenessAnalysisScore(60 + random.nextInt(30));
-        analysis.setCompetitivenessAnalysisText("产品差异化明显，具有一定的竞争优势。市场定位清晰，客户粘性较强。");
-        analysis.setFinancialHealthScore(60 + random.nextInt(30));
-        analysis.setFinancialHealthText("财务数据健康，营收增长稳定。成本控制良好，盈利能力逐步提升。");
-        analysis.setInvestmentValueScore(60 + random.nextInt(30));
-        analysis.setInvestmentValueText("具有较高的投资价值，建议重点关注。风险可控，预期回报率较好。");
+        // 构建详细分析内容
+        Map<String, Object> analysisContent = new HashMap<>();
+        analysisContent.put("overallScore", (int) score);
+        analysisContent.put("overallVerdict", recommendation);
 
-        // 投资亮点
-        analysis.setInvestmentHighlights("1. 市场空间广阔，增长潜力大\n2. 团队背景优秀，执行力强\n3. 产品差异化明显，具有竞争优势\n4. 商业模式清晰，盈利路径明确");
+        // 各维度分析
+        analysisContent.put("industryAnalysis", Map.of(
+                "score", 60 + random.nextInt(30),
+                "text", "行业市场空间广阔，具有良好的发展前景。"
+        ));
+        analysisContent.put("teamAnalysis", Map.of(
+                "score", 60 + random.nextInt(30),
+                "text", "创始团队经验丰富，核心成员具有相关行业背景。"
+        ));
+        analysisContent.put("technologyAnalysis", Map.of(
+                "score", 60 + random.nextInt(30),
+                "text", "技术方案具有创新性，核心技术有一定壁垒。"
+        ));
+        analysisContent.put("competitivenessAnalysis", Map.of(
+                "score", 60 + random.nextInt(30),
+                "text", "产品差异化明显，具有一定的竞争优势。"
+        ));
+        analysisContent.put("financialHealth", Map.of(
+                "score", 60 + random.nextInt(30),
+                "text", "财务数据健康，营收增长稳定。"
+        ));
+        analysisContent.put("investmentValue", Map.of(
+                "score", 60 + random.nextInt(30),
+                "text", "具有较高的投资价值，建议重点关注。"
+        ));
 
-        // 风险提示
-        analysis.setRiskWarnings("1. 市场竞争激烈，需要持续创新\n2. 行业监管政策存在不确定性\n3. 规模化扩张需要大量资金支持");
+        // 投资亮点和风险
+        analysisContent.put("investmentHighlights",
+                "1. 市场空间广阔，增长潜力大\n2. 团队背景优秀，执行力强\n3. 产品差异化明显");
+        analysisContent.put("riskWarnings",
+                "1. 市场竞争激烈\n2. 行业监管政策存在不确定性\n3. 规模化扩张需要大量资金");
+        analysisContent.put("investmentSuggestion", generateInvestmentSuggestion((int) score, recommendation));
 
-        // 投资建议
-        analysis.setInvestmentSuggestion(generateInvestmentSuggestion(overallScore, overallVerdict));
+        // 转换为JSON字符串存储
+        try {
+            analysis.setAnalysisContent(objectMapper.writeValueAsString(analysisContent));
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize analysis content", e);
+            analysis.setAnalysisContent("{}");
+        }
 
-        // 市场数据
-        analysis.setMarketSize("100亿+");
-        analysis.setMarketGrowthRate("15%");
+        analysis.setScore(BigDecimal.valueOf(score));
+        analysis.setRecommendation(recommendation);
 
         analysisRepository.save(analysis);
     }
@@ -244,12 +272,13 @@ public class InvestmentAnalysisService {
     /**
      * 转换为响应DTO
      */
-    private AnalysisResponse convertToResponse(InvestmentAnalysis analysis) {
-        Teaser teaser = analysis.getTeaser();
+    private AnalysisResponse convertToResponse(InvestmentAnalysis analysis, Teaser teaser) {
+        // 解析analysisContent
+        Map<String, Object> content = parseAnalysisContent(analysis.getAnalysisContent());
 
         // 构建风险评估
         Map<String, Object> riskAssessment = new HashMap<>();
-        int riskScore = 100 - (analysis.getOverallScore() != null ? analysis.getOverallScore() : 50);
+        int riskScore = 100 - (analysis.getScore() != null ? analysis.getScore().intValue() : 50);
         riskAssessment.put("riskLevel", riskScore <= 30 ? "low" : (riskScore <= 50 ? "medium" : "high"));
         riskAssessment.put("riskScore", riskScore);
         riskAssessment.put("marketRisk", "中等风险");
@@ -257,74 +286,96 @@ public class InvestmentAnalysisService {
         riskAssessment.put("financialRisk", "低风险");
         riskAssessment.put("teamRisk", "低风险");
 
+        // 从content中提取各维度分数
+        Integer marketScore = getScoreFromContent(content, "industryAnalysis");
+        Integer teamScore = getScoreFromContent(content, "teamAnalysis");
+        Integer productScore = getScoreFromContent(content, "technologyAnalysis");
+        Integer businessModelScore = getScoreFromContent(content, "competitivenessAnalysis");
+        Integer financialScore = getScoreFromContent(content, "financialHealth");
+        Integer competitivenessScore = getScoreFromContent(content, "investmentValue");
+
         return AnalysisResponse.builder()
                 .id(analysis.getId())
-                .teaserId(teaser != null ? teaser.getId() : null)
+                .teaserId(analysis.getTeaserId())
                 .teaserTitle(teaser != null ? teaser.getTitle() : null)
-                .status(analysis.getOverallScore() != null ? "completed" : "processing")
-                .overallScore(analysis.getOverallScore())
-                .scoreGrade(analysis.getOverallVerdict())
-                .marketScore(analysis.getIndustryAnalysisScore())
-                .teamScore(analysis.getTeamAnalysisScore())
-                .productScore(analysis.getTechnologyAnalysisScore())
-                .businessModelScore(analysis.getCompetitivenessAnalysisScore())
-                .financialScore(analysis.getFinancialHealthScore())
-                .competitivenessScore(analysis.getInvestmentValueScore())
+                .status(analysis.getScore() != null ? "completed" : "processing")
+                .overallScore(analysis.getScore() != null ? analysis.getScore().intValue() : null)
+                .scoreGrade(analysis.getRecommendation())
+                .marketScore(marketScore)
+                .teamScore(teamScore)
+                .productScore(productScore)
+                .businessModelScore(businessModelScore)
+                .financialScore(financialScore)
+                .competitivenessScore(competitivenessScore)
                 .riskAssessment(riskAssessment)
-                .highlights(analysis.getInvestmentHighlights())
-                .risks(analysis.getRiskWarnings())
-                .detailedAnalysis(buildDetailedAnalysis(analysis))
-                .investmentAdvice(analysis.getInvestmentSuggestion())
+                .highlights(getStringFromContent(content, "investmentHighlights"))
+                .risks(getStringFromContent(content, "riskWarnings"))
+                .detailedAnalysis(buildDetailedAnalysis(content))
+                .investmentAdvice(getStringFromContent(content, "investmentSuggestion"))
                 .createdAt(analysis.getCreatedAt())
                 .build();
     }
 
     /**
+     * 解析分析内容JSON
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> parseAnalysisContent(String jsonContent) {
+        if (jsonContent == null || jsonContent.isEmpty()) {
+            return new HashMap<>();
+        }
+        try {
+            return objectMapper.readValue(jsonContent, Map.class);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to parse analysis content", e);
+            return new HashMap<>();
+        }
+    }
+
+    /**
+     * 从内容中获取分数
+     */
+    @SuppressWarnings("unchecked")
+    private Integer getScoreFromContent(Map<String, Object> content, String key) {
+        Object value = content.get(key);
+        if (value instanceof Map) {
+            Object score = ((Map<String, Object>) value).get("score");
+            if (score instanceof Number) {
+                return ((Number) score).intValue();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 从内容中获取字符串
+     */
+    private String getStringFromContent(Map<String, Object> content, String key) {
+        Object value = content.get(key);
+        return value != null ? value.toString() : null;
+    }
+
+    /**
      * 构建详细分析Map
      */
-    private Map<String, Object> buildDetailedAnalysis(InvestmentAnalysis analysis) {
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildDetailedAnalysis(Map<String, Object> content) {
         Map<String, Object> detailedAnalysis = new HashMap<>();
 
-        if (analysis.getIndustryAnalysisScore() != null) {
-            detailedAnalysis.put("marketAnalysis", Map.of(
-                    "score", analysis.getIndustryAnalysisScore(),
-                    "comment", analysis.getIndustryAnalysisText() != null ? analysis.getIndustryAnalysisText() : ""
-            ));
-        }
+        String[] keys = {"industryAnalysis", "teamAnalysis", "technologyAnalysis",
+                "competitivenessAnalysis", "financialHealth", "investmentValue"};
+        String[] outputKeys = {"marketAnalysis", "teamAnalysis", "productAnalysis",
+                "businessModelAnalysis", "financialAnalysis", "competitivenessAnalysis"};
 
-        if (analysis.getTeamAnalysisScore() != null) {
-            detailedAnalysis.put("teamAnalysis", Map.of(
-                    "score", analysis.getTeamAnalysisScore(),
-                    "comment", analysis.getTeamAnalysisText() != null ? analysis.getTeamAnalysisText() : ""
-            ));
-        }
-
-        if (analysis.getTechnologyAnalysisScore() != null) {
-            detailedAnalysis.put("productAnalysis", Map.of(
-                    "score", analysis.getTechnologyAnalysisScore(),
-                    "comment", analysis.getTechnologyAnalysisText() != null ? analysis.getTechnologyAnalysisText() : ""
-            ));
-        }
-
-        if (analysis.getCompetitivenessAnalysisScore() != null) {
-            detailedAnalysis.put("businessModelAnalysis", Map.of(
-                    "score", analysis.getCompetitivenessAnalysisScore(),
-                    "comment", analysis.getCompetitivenessAnalysisText() != null ? analysis.getCompetitivenessAnalysisText() : ""
-            ));
-        }
-
-        if (analysis.getFinancialHealthScore() != null) {
-            detailedAnalysis.put("financialAnalysis", Map.of(
-                    "score", analysis.getFinancialHealthScore(),
-                    "comment", analysis.getFinancialHealthText() != null ? analysis.getFinancialHealthText() : ""
-            ));
-        }
-
-        if (analysis.getInvestmentValueScore() != null) {
-            detailedAnalysis.put("competitivenessAnalysis", Map.of(
-                    "score", analysis.getInvestmentValueScore(),
-                    "comment", analysis.getInvestmentValueText() != null ? analysis.getInvestmentValueText() : ""
-            ));
+        for (int i = 0; i < keys.length; i++) {
+            Object value = content.get(keys[i]);
+            if (value instanceof Map) {
+                Map<String, Object> analysis = (Map<String, Object>) value;
+                detailedAnalysis.put(outputKeys[i], Map.of(
+                        "score", analysis.getOrDefault("score", 0),
+                        "comment", analysis.getOrDefault("text", "")
+                ));
+            }
         }
 
         return detailedAnalysis;

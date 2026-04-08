@@ -18,6 +18,7 @@ public enum ErrorCode {
     INVALID_PARAMETER_FORMAT(10003, "参数格式不正确"),
     PARAMETER_OUT_OF_RANGE(10004, "参数值超出允许范围"),
     INVALID_JSON(10005, "请求体JSON格式错误"),
+    FEATURE_NOT_AVAILABLE(10006, "功能暂不可用"),
 
     // ==================== 认证授权错误码 (2xxxx) ====================
     UNAUTHORIZED(401, "未登录，请先登录"),
