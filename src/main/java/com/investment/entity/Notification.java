@@ -1,6 +1,7 @@
 package com.investment.entity;
 
 import com.investment.enums.NotificationType;
+import com.investment.enums.NotificationTypeConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,7 +34,7 @@ public class Notification extends BaseEntity {
     /**
      * 通知类型
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = NotificationTypeConverter.class)
     @Column(name = "notification_type", nullable = false, length = 50)
     private NotificationType notificationType;
 
@@ -67,4 +68,10 @@ public class Notification extends BaseEntity {
     @Column(name = "is_read")
     @Builder.Default
     private Boolean isRead = false;
+
+    /**
+     * 覆盖父类的updatedAt字段，数据库表中不存在此列
+     */
+    @Transient
+    private LocalDateTime updatedAt;
 }

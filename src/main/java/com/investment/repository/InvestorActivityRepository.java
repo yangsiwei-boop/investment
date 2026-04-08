@@ -91,27 +91,6 @@ public interface InvestorActivityRepository extends JpaRepository<InvestorActivi
     long countByInvestorUserIdAndFavoriteActivity(@Param("investorUserId") Long investorUserId);
 
     /**
-     * 获取不同的分组名称
-     *
-     * @param investorUserId 投资人ID
-     * @param activityType   活动类型
-     * @return 分组名称列表
-     */
-    @Query("SELECT DISTINCT ia.groupName FROM InvestorActivity ia WHERE ia.investorUserId = :investorUserId AND ia.activityType = :activityType AND ia.groupName IS NOT NULL")
-    List<String> findDistinctGroupNamesByInvestorUserIdAndActivityType(
-            @Param("investorUserId") Long investorUserId,
-            @Param("activityType") String activityType);
-
-    /**
-     * 删除指定时间之前的活动记录
-     *
-     * @param beforeTime 时间
-     */
-    @Modifying
-    @Query("DELETE FROM InvestorActivity ia WHERE ia.createdAt < :beforeTime")
-    void deleteByCreatedAtBefore(@Param("beforeTime") LocalDateTime beforeTime);
-
-    /**
      * 根据投资人ID和Teaser ID删除活动
      *
      * @param investorUserId 投资人ID
@@ -123,5 +102,17 @@ public interface InvestorActivityRepository extends JpaRepository<InvestorActivi
     void deleteByInvestorUserIdAndTeaserIdAndActivityType(
             @Param("investorUserId") Long investorUserId,
             @Param("teaserId") Long teaserId,
+            @Param("activityType") String activityType);
+
+    /**
+     * 获取投资人指定活动类型的不重复分组名称列表
+     *
+     * @param investorUserId 投资人ID
+     * @param activityType   活动类型
+     * @return 分组名称列表
+     */
+    @Query("SELECT DISTINCT ia.groupName FROM InvestorActivity ia WHERE ia.investorUserId = :investorUserId AND ia.activityType = :activityType AND ia.groupName IS NOT NULL")
+    List<String> findDistinctGroupNamesByInvestorUserIdAndActivityType(
+            @Param("investorUserId") Long investorUserId,
             @Param("activityType") String activityType);
 }

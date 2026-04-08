@@ -1,7 +1,9 @@
 package com.investment.entity;
 
 import com.investment.enums.UserStatus;
+import com.investment.enums.UserStatusConverter;
 import com.investment.enums.UserType;
+import com.investment.enums.UserTypeConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -47,7 +49,7 @@ public class User extends BaseEntity {
     /**
      * 用户类型
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = UserTypeConverter.class)
     @Column(name = "user_type", nullable = false)
     private UserType userType;
 
@@ -66,8 +68,8 @@ public class User extends BaseEntity {
     /**
      * 账号状态
      */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Convert(converter = UserStatusConverter.class)
+    @Column(name = "status", nullable = false, columnDefinition = "VARCHAR(20)")
     @Builder.Default
     private UserStatus status = UserStatus.PENDING;
 

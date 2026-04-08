@@ -31,6 +31,42 @@ public class InvestorTeaserController {
     private final TeaserSearchService teaserSearchService;
 
     /**
+     * 获取Teaser列表（简单分页）
+     *
+     * @param page      页码
+     * @param size      每页数量
+     * @param principal 当前用户
+     * @return Teaser列表
+     */
+    @GetMapping
+    @Operation(summary = "获取Teaser列表", description = "获取Teaser列表（分页）")
+    public ApiResponse<TeaserSearchResponse> getTeasers(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("Getting teasers for investor: {}", principal.getId());
+
+        TeaserSearchRequest request = TeaserSearchRequest.builder()
+                .page(page)
+                .pageSize(size)
+                .sortBy("created_at")
+                .sortOrder("desc")
+                .build();
+
+        Page<TeaserSearchResponse> teaserPage = teaserSearchService.searchTeasers(request, principal.getId());
+
+        TeaserSearchResponse response = TeaserSearchResponse.builder()
+                .items(teaserPage.getContent())
+                .total(teaserPage.getTotalElements())
+                .page(teaserPage.getNumber() + 1)
+                .pageSize(teaserPage.getSize())
+                .totalPages(teaserPage.getTotalPages())
+                .build();
+
+        return ApiResponse.success(response);
+    }
+
+    /**
      * 搜索Teaser
      *
      * @param request   搜索请求

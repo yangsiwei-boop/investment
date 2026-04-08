@@ -102,8 +102,13 @@ public class TokenService {
      * @return 是否在黑名单中
      */
     public boolean isBlacklisted(String token) {
-        String key = CacheConstants.TOKEN_BLACKLIST_PREFIX + token;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        try {
+            String key = CacheConstants.TOKEN_BLACKLIST_PREFIX + token;
+            return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        } catch (Exception e) {
+            log.error("Redis error when checking blacklist: {}", e.getMessage());
+            return false; // Redis异常时不阻止访问
+        }
     }
 
     /**

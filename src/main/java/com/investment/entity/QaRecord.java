@@ -133,4 +133,13 @@ public class QaRecord extends BaseEntity {
      */
     @Column(name = "entrepreneur_viewed_at")
     private LocalDateTime entrepreneurViewedAt;
+
+    /**
+     * 覆盖父类的createdAt和updatedAt字段，数据库表中不存在这些列
+     */
+    @Transient
+    private LocalDateTime createdAt;
+
+    @Transient
+    private LocalDateTime updatedAt;
 }

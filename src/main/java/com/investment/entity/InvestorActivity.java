@@ -53,10 +53,4 @@ public class InvestorActivity extends BaseEntity {
      */
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
-
-    /**
-     * 扩展数据（JSON格式）
-     */
-    @Column(name = "extra_data", columnDefinition = "json")
-    private String extraData;
 }

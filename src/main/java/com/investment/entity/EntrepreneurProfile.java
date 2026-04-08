@@ -170,9 +170,9 @@ public class EntrepreneurProfile extends BaseEntity {
     private String developmentPlans;
 
     /**
-     * 资料完善度
+     * 资料完善度 - 数据库中不存在此列
      */
-    @Column(name = "profile_completion_rate")
+    @Transient
     @Builder.Default
     private Integer profileCompletionRate = 0;
 }

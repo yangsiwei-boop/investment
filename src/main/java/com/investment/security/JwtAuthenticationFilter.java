@@ -43,33 +43,51 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = getJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && jwtTokenProvider.validateToken(jwt)) {
-                // 检查Token是否在黑名单中
-                if (tokenService.isBlacklisted(jwt)) {
-                    log.warn("Token is blacklisted: {}", jwt.substring(0, 20) + "...");
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-                    return;
+            if (StringUtils.hasText(jwt)) {
+                log.info("Processing JWT token for request: {}", request.getRequestURI());
+
+                boolean isValid = jwtTokenProvider.validateToken(jwt);
+                log.info("JWT token validation result: {}", isValid);
+
+                if (isValid) {
+                    // 检查Token是否在黑名单中
+                    boolean blacklisted = tokenService.isBlacklisted(jwt);
+                    log.info("Token blacklist check: {}", blacklisted);
+
+                    if (blacklisted) {
+                        log.warn("Token is blacklisted");
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                        return;
+                    }
+
+                    Long userId = jwtTokenProvider.getUserIdFromToken(jwt);
+                    String userType = jwtTokenProvider.getUserTypeFromToken(jwt);
+                    log.info("Extracted from token - userId: {}, userType: {}", userId, userType);
+
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+                    log.info("Found user: {}, status: {}", user.getId(), user.getStatus());
+
+                    // 检查用户状态（只禁止BANNED状态）
+                    if (user.getStatus() == UserStatus.BANNED) {
+                        throw new BusinessException(ErrorCode.ACCOUNT_BANNED);
+                    }
+
+                    UserPrincipal principal = UserPrincipal.create(user);
+                    principal.setUserType(userType);
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(principal, null, Collections.emptyList());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    log.info("Successfully set authentication for user: {}", userId);
+                } else {
+                    log.warn("JWT token validation failed");
                 }
-
-                Long userId = jwtTokenProvider.getUserIdFromToken(jwt);
-                String userType = jwtTokenProvider.getUserTypeFromToken(jwt);
-
-                User user = userRepository.findById(userId)
-                        .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-                // 检查用户状态（只禁止BANNED状态）
-                if (user.getStatus() == UserStatus.BANNED) {
-                    throw new BusinessException(ErrorCode.ACCOUNT_BANNED);
-                }
-
-                UserPrincipal principal = UserPrincipal.create(user);
-                principal.setUserType(userType);
-
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(principal, null, Collections.emptyList());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
+                log.info("No JWT token found in request");
             }
         } catch (Exception e) {
             log.error("Could not set user authentication in security context", e);

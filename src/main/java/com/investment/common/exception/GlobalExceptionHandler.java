@@ -134,10 +134,15 @@ public class GlobalExceptionHandler {
      * 处理其他异常
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+    public ResponseEntity<ApiResponse<String>> handleException(Exception e) {
         log.error("Unexpected exception", e);
+        // 开发环境返回详细错误信息
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR.getCode(), ErrorCode.INTERNAL_ERROR.getMessage()));
+                .body(ApiResponse.<String>builder()
+                        .code(ErrorCode.INTERNAL_ERROR.getCode())
+                        .message(ErrorCode.INTERNAL_ERROR.getMessage())
+                        .data(e.getClass().getName() + ": " + e.getMessage())
+                        .build());
     }
 }

@@ -59,9 +59,9 @@ public class Application extends BaseEntity {
     private Long teaserId;
 
     /**
-     * BP ID
+     * BP ID - 数据库中不存在此列
      */
-    @Column(name = "bp_id")
+    @Transient
     private Long bpId;
 
     /**
@@ -127,4 +127,13 @@ public class Application extends BaseEntity {
      */
     @Column(name = "last_viewed_at")
     private LocalDateTime lastViewedAt;
+
+    /**
+     * 覆盖父类的字段，数据库表中可能不存在这些列
+     */
+    @Transient
+    private LocalDateTime createdAt;
+
+    @Transient
+    private LocalDateTime updatedAt;
 }

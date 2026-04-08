@@ -2,6 +2,7 @@ package com.investment.entity;
 
 import com.investment.enums.AnalysisStatus;
 import com.investment.enums.TeaserStatus;
+import com.investment.enums.TeaserStatusConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -196,7 +197,7 @@ public class Teaser extends BaseEntity {
     /**
      * 状态
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = TeaserStatusConverter.class)
     @Column(name = "status", length = 20)
     @Builder.Default
     private TeaserStatus status = TeaserStatus.DRAFT;

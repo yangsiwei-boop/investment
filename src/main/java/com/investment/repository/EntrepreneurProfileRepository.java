@@ -70,12 +70,4 @@ public interface EntrepreneurProfileRepository extends JpaRepository<Entrepreneu
      * @return 数量
      */
     Long countByIndustry(IndustryType industry);
-
-    /**
-     * 查找资料完善度低于指定值的记录
-     *
-     * @param threshold 阈值
-     * @return 融资用户资料列表
-     */
-    List<EntrepreneurProfile> findByProfileCompletionRateLessThan(Integer threshold);
 }

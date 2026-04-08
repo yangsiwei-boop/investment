@@ -135,11 +135,17 @@ public class TeaserSearchService {
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
 
-        String field = switch (sortBy) {
-            case "view_count" -> "viewCount";
-            case "match_score" -> "matchScoreAvg";
-            default -> "createdAt";
-        };
+        String field;
+        if (sortBy == null) {
+            field = "createdAt";
+        } else {
+            field = switch (sortBy) {
+                case "view_count" -> "viewCount";
+                case "match_score" -> "matchScoreAvg";
+                case "created_at" -> "createdAt";
+                default -> "createdAt";
+            };
+        }
 
         return Sort.by(direction, field);
     }

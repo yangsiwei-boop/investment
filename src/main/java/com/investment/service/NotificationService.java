@@ -117,7 +117,8 @@ public class NotificationService {
      * @return 未读数量
      */
     public long getUnreadCount(Long userId) {
-        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+        Long count = notificationRepository.countByUserIdAndIsReadFalse(userId);
+        return count != null ? count : 0L;
     }
 
     /**

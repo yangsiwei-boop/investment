@@ -1,7 +1,9 @@
 package com.investment.entity;
 
 import com.investment.enums.FinancingStage;
+import com.investment.enums.FinancingStageConverter;
 import com.investment.enums.IndustryType;
+import com.investment.enums.IndustryTypeConverter;
 import com.investment.enums.ProjectStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -50,7 +52,7 @@ public class Project extends BaseEntity {
     /**
      * 所属行业
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = IndustryTypeConverter.class)
     @Column(name = "industry", length = 50)
     private IndustryType industry;
 
@@ -81,7 +83,7 @@ public class Project extends BaseEntity {
     /**
      * 融资阶段
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = FinancingStageConverter.class)
     @Column(name = "financing_stage", length = 20)
     private FinancingStage financingStage;
 

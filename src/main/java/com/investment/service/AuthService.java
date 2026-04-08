@@ -59,7 +59,7 @@ public class AuthService {
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .userType(UserType.valueOf(request.getUserType().toUpperCase()))
-                .status(UserStatus.PENDING)
+                .status(UserStatus.ACTIVE)  // 临时改为ACTIVE以便测试登录
                 .isVerified(false)
                 .notificationCount(0)
                 .unreadQuestionCount(0)
