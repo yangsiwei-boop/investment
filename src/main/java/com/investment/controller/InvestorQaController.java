@@ -2,6 +2,7 @@ package com.investment.controller;
 
 import com.investment.common.response.ApiResponse;
 import com.investment.dto.request.qa.QuestionSendRequest;
+import com.investment.dto.request.qa.QaReplyRequest;
 import com.investment.dto.response.qa.QaRecordResponse;
 import com.investment.security.UserPrincipal;
 import com.investment.service.QaService;
@@ -68,6 +69,26 @@ public class InvestorQaController {
 
         Page<QaRecordResponse> questions = qaService.getInvestorQuestions(principal.getId(), page, size);
         return ApiResponse.success(questions);
+    }
+
+    /**
+     * 追问/追加消息
+     *
+     * @param qaId      问答ID
+     * @param request   请求
+     * @param principal 当前用户
+     * @return 问答记录
+     */
+    @PostMapping("/{qaId}/reply")
+    @Operation(summary = "追问/追加消息", description = "投资人追加问题或回复")
+    public ApiResponse<QaRecordResponse> followUpQuestion(
+            @PathVariable Long qaId,
+            @Valid @RequestBody QaReplyRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("Investor follow-up on question: {}, investor: {}", qaId, principal.getId());
+
+        QaRecordResponse response = qaService.followUpQuestion(qaId, principal.getId(), request);
+        return ApiResponse.success(response);
     }
 
     /**

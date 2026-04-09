@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 问答记录响应DTO
@@ -59,7 +60,7 @@ public class QaRecordResponse {
     private String category;
 
     /**
-     * 回答内容
+     * 回答内容（最新一条回复的快捷字段，兼容旧前端）
      */
     private String answer;
 
@@ -92,6 +93,16 @@ public class QaRecordResponse {
      * 回答时间
      */
     private LocalDateTime answeredAt;
+
+    /**
+     * 回复数量
+     */
+    private Integer replyCount;
+
+    /**
+     * 所有回复列表（按时间升序）
+     */
+    private List<QaReplyResponse> replies;
 
     /**
      * 创建时间
