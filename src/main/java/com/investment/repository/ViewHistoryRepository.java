@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -54,4 +55,7 @@ public interface ViewHistoryRepository extends JpaRepository<ViewHistory, Long> 
      */
     @Query("SELECT vh FROM ViewHistory vh WHERE vh.userId = :userId ORDER BY vh.createdAt DESC")
     List<ViewHistory> findRecentViews(@Param("userId") Long userId, Pageable pageable);
+
+    @Query("SELECT COUNT(vh) FROM ViewHistory vh WHERE vh.createdAt >= :startDate AND vh.createdAt < :endDate")
+    Long countByCreatedAtBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

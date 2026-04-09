@@ -1,11 +1,11 @@
 package com.investment.controller;
 
 import com.investment.common.response.ApiResponse;
+import com.investment.dto.request.admin.RoleCreateRequest;
 import com.investment.dto.request.admin.UserStatusUpdateRequest;
 import com.investment.dto.request.admin.VerificationReviewRequest;
-import com.investment.dto.response.admin.AdminDashboardResponse;
-import com.investment.dto.response.admin.UserListResponse;
-import com.investment.dto.response.admin.VerificationDetailResponse;
+import com.investment.dto.request.admin.RoleUpdateRequest;
+import com.investment.dto.response.admin.*;
 import com.investment.security.UserPrincipal;
 import com.investment.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +18,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 后台管理控制器
@@ -145,6 +147,82 @@ public class AdminController {
 
         VerificationDetailResponse response = adminService.reviewVerification(
                 verificationId, principal.getId(), request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 获取权限列表
+     *
+     * @return 权限列表
+     */
+    @GetMapping("/permissions")
+    @Operation(summary = "获取权限列表", description = "获取系统所有可用权限列表")
+    public ApiResponse<List<PermissionResponse>> getPermissionList() {
+        log.info("Getting permission list");
+
+        List<PermissionResponse> permissions = adminService.getPermissionList();
+        return ApiResponse.success(permissions);
+    }
+
+    /**
+     * 获取角色列表（含权限信息）
+     *
+     * @return 角色列表
+     */
+    @GetMapping("/roles")
+    @Operation(summary = "获取角色列表", description = "获取系统角色列表及其关联权限")
+    public ApiResponse<List<RoleResponse>> getRoleList() {
+        log.info("Getting role list");
+
+        List<RoleResponse> roles = adminService.getRoleList();
+        return ApiResponse.success(roles);
+    }
+
+    /**
+     * 创建角色
+     *
+     * @param request 创建请求
+     * @return 创建后的角色
+     */
+    @PostMapping("/roles")
+    @Operation(summary = "创建角色", description = "创建新的系统角色")
+    public ApiResponse<RoleResponse> createRole(
+            @Valid @RequestBody RoleCreateRequest request) {
+        log.info("Creating role: {}", request.getRoleCode());
+
+        RoleResponse response = adminService.createRole(request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 更新角色
+     *
+     * @param roleId  角色ID
+     * @param request 更新请求
+     * @return 更新后的角色
+     */
+    @PutMapping("/roles/{roleId}")
+    @Operation(summary = "更新角色", description = "更新角色信息")
+    public ApiResponse<RoleResponse> updateRole(
+            @PathVariable Long roleId,
+            @RequestBody RoleUpdateRequest request) {
+        log.info("Updating role: {}", roleId);
+
+        RoleResponse response = adminService.updateRole(roleId, request);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 获取数据统计
+     *
+     * @return 统计数据
+     */
+    @GetMapping("/statistics")
+    @Operation(summary = "获取数据统计", description = "获取系统统计数据（概览、趋势、分布）")
+    public ApiResponse<StatisticsResponse> getStatistics() {
+        log.info("Getting admin statistics");
+
+        StatisticsResponse response = adminService.getStatistics();
         return ApiResponse.success(response);
     }
 }

@@ -2,13 +2,14 @@ package com.investment.service;
 
 import com.investment.common.exception.BusinessException;
 import com.investment.common.exception.ErrorCode;
+import com.investment.dto.request.admin.RoleCreateRequest;
+import com.investment.dto.request.admin.RoleUpdateRequest;
 import com.investment.dto.request.admin.UserStatusUpdateRequest;
 import com.investment.dto.request.admin.VerificationReviewRequest;
-import com.investment.dto.response.admin.AdminDashboardResponse;
-import com.investment.dto.response.admin.UserListResponse;
-import com.investment.dto.response.admin.VerificationDetailResponse;
-import com.investment.entity.User;
-import com.investment.entity.UserVerification;
+import com.investment.dto.response.admin.*;
+import com.investment.entity.*;
+import com.investment.enums.FinancingStage;
+import com.investment.enums.IndustryType;
 import com.investment.enums.UserStatus;
 import com.investment.enums.VerificationStatus;
 import com.investment.repository.*;
@@ -23,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 后台管理服务
@@ -41,6 +45,11 @@ public class AdminService {
     private final TeaserRepository teaserRepository;
     private final UserVerificationRepository verificationRepository;
     private final ApplicationRepository applicationRepository;
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RolePermissionRepository rolePermissionRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final ViewHistoryRepository viewHistoryRepository;
 
     /**
      * 获取仪表盘数据
@@ -251,5 +260,287 @@ public class AdminService {
             return idCard;
         }
         return idCard.substring(0, 6) + "****" + idCard.substring(idCard.length() - 4);
+    }
+
+    /**
+     * 获取权限列表
+     *
+     * @return 权限列表
+     */
+    public List<PermissionResponse> getPermissionList() {
+        log.info("Getting permission list");
+
+        List<Permission> permissions = permissionRepository.findAll(Sort.by(Sort.Direction.ASC, "sortOrder"));
+        return permissions.stream()
+                .map(this::convertToPermissionResponse)
+                .toList();
+    }
+
+    /**
+     * 获取角色列表（含权限信息）
+     *
+     * @return 角色列表
+     */
+    public List<RoleResponse> getRoleList() {
+        log.info("Getting role list with permissions");
+
+        List<Role> roles = roleRepository.findAll(Sort.by(Sort.Direction.ASC, "sortOrder"));
+        List<RoleResponse> result = new ArrayList<>();
+
+        for (Role role : roles) {
+            List<RolePermission> rolePermissions = rolePermissionRepository.findByRoleId(role.getId());
+            List<PermissionResponse> permResponses = rolePermissions.stream()
+                    .map(rp -> convertToPermissionResponse(rp.getPermission()))
+                    .toList();
+
+            result.add(RoleResponse.builder()
+                    .id(role.getId())
+                    .roleCode(role.getRoleCode())
+                    .roleName(role.getRoleName())
+                    .description(role.getDescription())
+                    .roleLevel(role.getRoleLevel())
+                    .isSystem(role.getIsSystem())
+                    .isEnabled(role.getIsEnabled())
+                    .sortOrder(role.getSortOrder())
+                    .permissionsCount(permResponses.size())
+                    .usersCount(role.getUsersCount())
+                    .permissions(permResponses)
+                    .createdAt(role.getCreatedAt())
+                    .updatedAt(role.getUpdatedAt())
+                    .build());
+        }
+
+        return result;
+    }
+
+    /**
+     * 创建角色
+     *
+     * @param request 创建请求
+     * @return 创建后的角色
+     */
+    @Transactional
+    public RoleResponse createRole(RoleCreateRequest request) {
+        log.info("Creating role: {}", request.getRoleCode());
+
+        // 检查角色编码是否已存在
+        if (roleRepository.existsByRoleCode(request.getRoleCode())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "角色编码已存在: " + request.getRoleCode());
+        }
+
+        Role role = Role.builder()
+                .roleCode(request.getRoleCode())
+                .roleName(request.getRoleName())
+                .description(request.getDescription())
+                .roleLevel(request.getRoleLevel() != null ? request.getRoleLevel() : 0)
+                .isSystem(false)
+                .isEnabled(request.getIsEnabled() != null ? request.getIsEnabled() : true)
+                .sortOrder(request.getSortOrder() != null ? request.getSortOrder() : 0)
+                .permissionsCount(0)
+                .usersCount(0)
+                .build();
+
+        roleRepository.save(role);
+
+        // 关联权限
+        if (request.getPermissionIds() != null && !request.getPermissionIds().isEmpty()) {
+            for (Long permId : request.getPermissionIds()) {
+                Permission perm = permissionRepository.findById(permId).orElse(null);
+                if (perm != null) {
+                    RolePermission rp = RolePermission.builder()
+                            .role(role)
+                            .permission(perm)
+                            .build();
+                    rolePermissionRepository.save(rp);
+                }
+            }
+            role.setPermissionsCount(request.getPermissionIds().size());
+            roleRepository.save(role);
+        }
+
+        // 返回创建后的角色
+        return getRoleList().stream()
+                .filter(r -> r.getId().equals(role.getId()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.INTERNAL_ERROR, "创建角色失败"));
+    }
+
+    /**
+     * 更新角色
+     *
+     * @param roleId  角色ID
+     * @param request 更新请求
+     * @return 更新后的角色
+     */
+    @Transactional
+    public RoleResponse updateRole(Long roleId, RoleUpdateRequest request) {
+        log.info("Updating role: {}", roleId);
+
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NO_PERMISSION, "角色不存在"));
+
+        if (request.getRoleName() != null) {
+            role.setRoleName(request.getRoleName());
+        }
+        if (request.getDescription() != null) {
+            role.setDescription(request.getDescription());
+        }
+        if (request.getRoleLevel() != null) {
+            role.setRoleLevel(request.getRoleLevel());
+        }
+        if (request.getIsEnabled() != null) {
+            role.setIsEnabled(request.getIsEnabled());
+        }
+        if (request.getSortOrder() != null) {
+            role.setSortOrder(request.getSortOrder());
+        }
+
+        // 更新权限关联
+        if (request.getPermissionIds() != null) {
+            rolePermissionRepository.deleteByRoleId(roleId);
+            for (Long permId : request.getPermissionIds()) {
+                Permission perm = permissionRepository.findById(permId).orElse(null);
+                if (perm != null) {
+                    RolePermission rp = RolePermission.builder()
+                            .role(role)
+                            .permission(perm)
+                            .build();
+                    rolePermissionRepository.save(rp);
+                }
+            }
+            role.setPermissionsCount(request.getPermissionIds().size());
+        }
+
+        roleRepository.save(role);
+
+        // 返回更新后的角色
+        return getRoleList().stream()
+                .filter(r -> r.getId().equals(roleId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.NO_PERMISSION, "角色不存在"));
+    }
+
+    /**
+     * 获取数据统计
+     *
+     * @return 统计数据
+     */
+    public StatisticsResponse getStatistics() {
+        log.info("Getting admin statistics");
+
+        LocalDate today = LocalDate.now();
+        LocalDateTime todayStart = today.atStartOfDay();
+        LocalDateTime weekStart = today.minusDays(7).atStartOfDay();
+        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+
+        // 概览统计
+        StatisticsResponse.OverviewStats overview = StatisticsResponse.OverviewStats.builder()
+                .totalUsers(userRepository.count())
+                .newUsersToday(userRepository.countByCreatedAtAfter(todayStart))
+                .newUsersThisWeek(userRepository.countByCreatedAtAfter(weekStart))
+                .newUsersThisMonth(userRepository.countByCreatedAtAfter(monthStart))
+                .totalProjects(projectRepository.count())
+                .newProjectsToday(projectRepository.countByCreatedAtAfter(todayStart))
+                .totalTeasers(teaserRepository.count())
+                .publishedTeasers(teaserRepository.countByStatus(com.investment.enums.TeaserStatus.PUBLISHED))
+                .totalViews(safeLong(teaserRepository.sumAllViewCount()))
+                .totalFavorites(favoriteRepository.count())
+                .totalApplications(applicationRepository.count())
+                .pendingApplications(applicationRepository.countByApplicationStatus(
+                        com.investment.enums.ApplicationStatus.PENDING))
+                .build();
+
+        // 用户增长趋势（近7天）
+        List<StatisticsResponse.TrendItem> userTrend = new ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            LocalDateTime dayStart = date.atStartOfDay();
+            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
+            Long count = userRepository.countByCreatedAtBetween(dayStart, dayEnd);
+            userTrend.add(StatisticsResponse.TrendItem.builder()
+                    .date(date.format(DateTimeFormatter.ISO_DATE))
+                    .value(count != null ? count : 0L)
+                    .build());
+        }
+
+        // 项目趋势（近7天）
+        List<StatisticsResponse.TrendItem> projectTrend = new ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            LocalDateTime dayStart = date.atStartOfDay();
+            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
+            Long count = projectRepository.countByCreatedAtBetween(dayStart, dayEnd);
+            projectTrend.add(StatisticsResponse.TrendItem.builder()
+                    .date(date.format(DateTimeFormatter.ISO_DATE))
+                    .value(count != null ? count : 0L)
+                    .build());
+        }
+
+        // 浏览趋势（近7天）
+        List<StatisticsResponse.TrendItem> viewTrend = new ArrayList<>();
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            LocalDateTime dayStart = date.atStartOfDay();
+            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
+            Long count = viewHistoryRepository.countByCreatedAtBetween(dayStart, dayEnd);
+            viewTrend.add(StatisticsResponse.TrendItem.builder()
+                    .date(date.format(DateTimeFormatter.ISO_DATE))
+                    .value(count != null ? count : 0L)
+                    .build());
+        }
+
+        // 行业分布
+        List<StatisticsResponse.DistributionItem> industryDistribution = new ArrayList<>();
+        for (IndustryType industry : IndustryType.values()) {
+            Long count = projectRepository.countByIndustry(industry);
+            if (count != null && count > 0) {
+                industryDistribution.add(StatisticsResponse.DistributionItem.builder()
+                        .name(industry.getDescription())
+                        .value(count)
+                        .build());
+            }
+        }
+
+        // 融资阶段分布
+        List<StatisticsResponse.DistributionItem> stageDistribution = new ArrayList<>();
+        for (FinancingStage stage : FinancingStage.values()) {
+            Long count = projectRepository.countByFinancingStage(stage);
+            if (count != null && count > 0) {
+                stageDistribution.add(StatisticsResponse.DistributionItem.builder()
+                        .name(stage.getDescription())
+                        .value(count)
+                        .build());
+            }
+        }
+
+        return StatisticsResponse.builder()
+                .overview(overview)
+                .userTrend(userTrend)
+                .projectTrend(projectTrend)
+                .viewTrend(viewTrend)
+                .industryDistribution(industryDistribution)
+                .stageDistribution(stageDistribution)
+                .build();
+    }
+
+    private PermissionResponse convertToPermissionResponse(Permission p) {
+        return PermissionResponse.builder()
+                .id(p.getId())
+                .permissionCode(p.getPermissionCode())
+                .permissionName(p.getPermissionName())
+                .description(p.getDescription())
+                .module(p.getModule())
+                .parentId(p.getParentId())
+                .permissionType(p.getPermissionType())
+                .resourcePath(p.getResourcePath())
+                .httpMethods(p.getHttpMethods())
+                .sortOrder(p.getSortOrder())
+                .isEnabled(p.getIsEnabled())
+                .icon(p.getIcon())
+                .build();
+    }
+
+    private Long safeLong(Long value) {
+        return value != null ? value : 0L;
     }
 }

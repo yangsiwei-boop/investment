@@ -1,6 +1,7 @@
 package com.investment.repository;
 
 import com.investment.entity.Project;
+import com.investment.enums.FinancingStage;
 import com.investment.enums.IndustryType;
 import com.investment.enums.ProjectStatus;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -132,4 +134,12 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
      * @return 项目分页列表
      */
     Page<Project> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    @Query("SELECT COUNT(p) FROM Project p WHERE p.createdAt >= :startDate AND p.createdAt < :endDate")
+    Long countByCreatedAtBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(p) FROM Project p WHERE p.createdAt >= :date")
+    Long countByCreatedAtAfter(@Param("date") LocalDateTime date);
+
+    Long countByFinancingStage(FinancingStage financingStage);
 }
