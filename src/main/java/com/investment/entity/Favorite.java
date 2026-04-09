@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
 }, uniqueConstraints = {
         @UniqueConstraint(name = "uk_user_teaser", columnNames = {"user_id", "teaser_id"})
 })
-public class Favorite {
+public class Favorite extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,15 +41,14 @@ public class Favorite {
     private Long teaserId;
 
     /**
-     * 创建时间
+     * 分组名称
      */
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @Column(name = "group_name", length = 100)
+    private String groupName;
 
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-    }
+    /**
+     * 备注
+     */
+    @Column(name = "note", columnDefinition = "TEXT")
+    private String note;
 }

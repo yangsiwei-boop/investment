@@ -140,6 +140,7 @@ public class EntrepreneurTeaserService {
      * @param size   每页数量
      * @return Teaser分页列表
      */
+    @Transactional(readOnly = true)
     public Page<TeaserResponse> getTeaserList(Long userId, int page, int size) {
         log.info("Getting teaser list for user: {}", userId);
 
@@ -162,6 +163,7 @@ public class EntrepreneurTeaserService {
      * @param userId   用户ID
      * @return Teaser详情
      */
+    @Transactional(readOnly = true)
     public TeaserResponse getTeaser(Long teaserId, Long userId) {
         log.info("Getting teaser: {}, user: {}", teaserId, userId);
 

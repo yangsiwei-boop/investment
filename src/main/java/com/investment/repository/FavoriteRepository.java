@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -63,4 +64,10 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     @Modifying
     @Query("DELETE FROM Favorite f WHERE f.userId = :userId AND f.teaserId = :teaserId")
     void deleteByUserIdAndTeaserId(@Param("userId") Long userId, @Param("teaserId") Long teaserId);
+
+    /**
+     * 获取用户的所有分组名称
+     */
+    @Query("SELECT DISTINCT f.groupName FROM Favorite f WHERE f.userId = :userId AND f.groupName IS NOT NULL")
+    List<String> findDistinctGroupNamesByUserId(@Param("userId") Long userId);
 }

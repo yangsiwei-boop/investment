@@ -27,7 +27,6 @@ public class Application extends BaseEntity {
     /**
      * 申请类型
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "application_type", nullable = false, length = 20)
     private ApplicationType applicationType;
 
@@ -73,7 +72,6 @@ public class Application extends BaseEntity {
     /**
      * 申请状态
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "application_status", length = 20)
     @Builder.Default
     private ApplicationStatus applicationStatus = ApplicationStatus.PENDING;
@@ -128,12 +126,4 @@ public class Application extends BaseEntity {
     @Column(name = "last_viewed_at")
     private LocalDateTime lastViewedAt;
 
-    /**
-     * 覆盖父类的字段，数据库表中可能不存在这些列
-     */
-    @Transient
-    private LocalDateTime createdAt;
-
-    @Transient
-    private LocalDateTime updatedAt;
 }

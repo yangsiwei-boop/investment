@@ -1,6 +1,8 @@
 package com.investment.service;
 
 import com.investment.common.exception.BusinessException;
+import com.investment.entity.Teaser;
+import com.investment.repository.TeaserRepository;
 import com.investment.common.exception.ErrorCode;
 import com.investment.dto.request.qa.AnswerRequest;
 import com.investment.dto.request.qa.QuestionSendRequest;
@@ -35,6 +37,7 @@ public class QaService {
 
     private final QaRecordRepository qaRecordRepository;
     private final ProjectRepository projectRepository;
+    private final TeaserRepository teaserRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
@@ -53,10 +56,17 @@ public class QaService {
         User investor = userRepository.findById(investorId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // TODO: 需要通过TeaserService获取Teaser及关联的Project
-        // 这里暂时使用占位逻辑，实际实现需要根据Teaser获取Project
+        // 通过Teaser获取关联的Project
+        Teaser teaser = request.getTeaserId() != null
+                ? teaserRepository.findById(request.getTeaserId()).orElse(null) : null;
         Project project = null;
         User entrepreneur = null;
+        if (teaser != null && teaser.getProject() != null) {
+            project = projectRepository.findById(teaser.getProject().getId()).orElse(null);
+        }
+        if (project != null) {
+            entrepreneur = project.getEntrepreneurUser();
+        }
 
         // 创建问题
         QaRecord qaRecord = QaRecord.builder()

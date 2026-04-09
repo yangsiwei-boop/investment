@@ -49,7 +49,6 @@ public class EntrepreneurProfile extends BaseEntity {
     /**
      * 所属行业
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "industry", length = 50)
     private IndustryType industry;
 
@@ -86,7 +85,6 @@ public class EntrepreneurProfile extends BaseEntity {
     /**
      * 公司阶段
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "company_stage", length = 20)
     private FinancingStage companyStage;
 

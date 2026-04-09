@@ -17,7 +17,7 @@ public class NotificationTypeConverter implements AttributeConverter<Notificatio
         if (attribute == null) {
             return null;
         }
-        return attribute.name();
+        return attribute.getCode();
     }
 
     @Override
@@ -25,7 +25,13 @@ public class NotificationTypeConverter implements AttributeConverter<Notificatio
         if (dbData == null || dbData.isEmpty()) {
             return null;
         }
-        // 忽略大小写转换
+        // 先尝试code匹配
+        for (NotificationType t : NotificationType.values()) {
+            if (t.getCode().equalsIgnoreCase(dbData)) {
+                return t;
+            }
+        }
+        // 再尝试name匹配
         return NotificationType.valueOf(dbData.toUpperCase());
     }
 }

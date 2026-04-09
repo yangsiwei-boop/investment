@@ -47,6 +47,7 @@ public class TeaserSearchService {
      * @param investorId 投资人ID
      * @return 搜索结果
      */
+    @Transactional(readOnly = true)
     public Page<TeaserSearchResponse> searchTeasers(TeaserSearchRequest request, Long investorId) {
         log.info("Searching teasers for investor: {}, request: {}", investorId, request);
 
@@ -104,7 +105,7 @@ public class TeaserSearchService {
         recordViewActivity(investorId, teaserId);
 
         // 增加浏览次数
-        teaser.setViewCount(teaser.getViewCount() + 1);
+        teaser.setViewCount((teaser.getViewCount() != null ? teaser.getViewCount() : 0) + 1);
         teaserRepository.save(teaser);
 
         return convertToDetailResponse(teaser);

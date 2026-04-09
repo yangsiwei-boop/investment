@@ -52,6 +52,9 @@ public class DatabaseSyncRunner implements CommandLineRunner {
             // 5. 同步 notifications 表
             syncNotificationsTable();
 
+            // 6. 同步 applications 表
+            syncApplicationsTable();
+
             log.info("==========================================");
             log.info("✅ 数据库表结构同步完成!");
             log.info("==========================================");
@@ -168,6 +171,14 @@ public class DatabaseSyncRunner implements CommandLineRunner {
                 jdbcTemplate.execute("ALTER TABLE investment_analyses ADD COLUMN deleted_at DATETIME COMMENT '软删除时间'");
                 log.info("  - 添加 deleted_at 列");
             }
+            if (!columnExists("investment_analyses", "score")) {
+                jdbcTemplate.execute("ALTER TABLE investment_analyses ADD COLUMN score DECIMAL(5,2) COMMENT '评分'");
+                log.info("  - 添加 score 列");
+            }
+            if (!columnExists("investment_analyses", "recommendation")) {
+                jdbcTemplate.execute("ALTER TABLE investment_analyses ADD COLUMN recommendation VARCHAR(100) COMMENT '推荐意见'");
+                log.info("  - 添加 recommendation 列");
+            }
             log.info("  ✓ investment_analyses 表同步完成");
         } catch (Exception e) {
             log.warn("  ✗ investment_analyses 表同步失败: {}", e.getMessage());
@@ -246,9 +257,42 @@ public class DatabaseSyncRunner implements CommandLineRunner {
                 jdbcTemplate.execute("ALTER TABLE notifications ADD COLUMN deleted_at DATETIME COMMENT '删除时间'");
                 log.info("  - 添加 deleted_at 列");
             }
+            // 扩大 notification_type 列长度
+            try {
+                jdbcTemplate.execute("ALTER TABLE notifications MODIFY COLUMN notification_type VARCHAR(50) NOT NULL COMMENT '通知类型'");
+                log.info("  - 扩大 notification_type 列长度");
+            } catch (Exception ignored) {}
             log.info("  ✓ notifications 表同步完成");
         } catch (Exception e) {
             log.warn("  ✗ notifications 表同步失败: {}", e.getMessage());
+        }
+    }
+
+    private void syncApplicationsTable() {
+        log.info("同步 applications 表...");
+        try {
+            // 添加 teaser_id 列
+            if (!columnExists("applications", "teaser_id")) {
+                jdbcTemplate.execute("ALTER TABLE applications ADD COLUMN teaser_id BIGINT COMMENT 'Teaser ID'");
+                log.info("  - 添加 teaser_id 列");
+            }
+            // 添加 created_at 列
+            if (!columnExists("applications", "created_at")) {
+                jdbcTemplate.execute("ALTER TABLE applications ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'");
+                log.info("  - 添加 created_at 列");
+            }
+            // 添加 updated_at 列
+            if (!columnExists("applications", "updated_at")) {
+                jdbcTemplate.execute("ALTER TABLE applications ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'");
+                log.info("  - 添加 updated_at 列");
+            }
+            // 添加索引
+            try {
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_applications_teaser_id ON applications(teaser_id)");
+            } catch (Exception ignored) {}
+            log.info("  ✓ applications 表同步完成");
+        } catch (Exception e) {
+            log.warn("  ✗ applications 表同步失败: {}", e.getMessage());
         }
     }
 

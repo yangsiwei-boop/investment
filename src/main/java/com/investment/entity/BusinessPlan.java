@@ -78,7 +78,6 @@ public class BusinessPlan extends BaseEntity {
     /**
      * 上传状态
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "upload_status", length = 20)
     @Builder.Default
     private UploadStatus uploadStatus = UploadStatus.UPLOADING;
@@ -93,7 +92,6 @@ public class BusinessPlan extends BaseEntity {
     /**
      * Teaser生成状态
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "teaser_generation_status", length = 20)
     @Builder.Default
     private AnalysisStatus teaserGenerationStatus = AnalysisStatus.PENDING;
@@ -101,7 +99,6 @@ public class BusinessPlan extends BaseEntity {
     /**
      * 内容提取状态
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "extraction_status", length = 20)
     @Builder.Default
     private AnalysisStatus extractionStatus = AnalysisStatus.PENDING;
@@ -116,7 +113,6 @@ public class BusinessPlan extends BaseEntity {
     /**
      * AI分析状态
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "ai_analysis_status", length = 20)
     @Builder.Default
     private AnalysisStatus aiAnalysisStatus = AnalysisStatus.PENDING;

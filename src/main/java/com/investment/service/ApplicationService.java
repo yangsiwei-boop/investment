@@ -60,8 +60,8 @@ public class ApplicationService {
         Teaser teaser = teaserRepository.findById(request.getTeaserId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEASER_NOT_FOUND));
 
-        // 获取项目
-        Project project = projectRepository.findById(teaser.getProject().getId())
+        // 获取项目 - 使用teaser的projectId直接查询避免懒加载
+        Project project = projectRepository.findById(teaser.getProject() != null ? teaser.getProject().getId() : null)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
         // 获取融资用户
@@ -111,6 +111,7 @@ public class ApplicationService {
      * @param size       每页数量
      * @return 申请列表
      */
+    @Transactional(readOnly = true)
     public Page<ApplicationResponse> getInvestorApplications(Long investorId, String status, int page, int size) {
         log.info("Getting applications for investor: {}", investorId);
 
@@ -140,6 +141,7 @@ public class ApplicationService {
      * @param size           每页数量
      * @return 申请列表
      */
+    @Transactional(readOnly = true)
     public Page<ApplicationResponse> getEntrepreneurApplications(Long entrepreneurId, String status, int page, int size) {
         log.info("Getting applications for entrepreneur: {}", entrepreneurId);
 
@@ -217,6 +219,7 @@ public class ApplicationService {
      * @param userId        用户ID
      * @return 申请详情
      */
+    @Transactional(readOnly = true)
     public ApplicationResponse getApplication(Long applicationId, Long userId) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.APPLICATION_NOT_FOUND));

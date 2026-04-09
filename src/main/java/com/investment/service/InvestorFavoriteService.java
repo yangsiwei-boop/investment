@@ -63,11 +63,13 @@ public class InvestorFavoriteService {
         Favorite favorite = Favorite.builder()
                 .userId(investorId)
                 .teaserId(request.getTeaserId())
+                .groupName(request.getGroupName())
+                .note(request.getNote())
                 .build();
         favoriteRepository.save(favorite);
 
         // 增加收藏计数
-        teaser.setFavoriteCount(teaser.getFavoriteCount() + 1);
+        teaser.setFavoriteCount((teaser.getFavoriteCount() != null ? teaser.getFavoriteCount() : 0) + 1);
         teaserRepository.save(teaser);
 
         return convertToFavoriteResponse(favorite, teaser);
@@ -91,8 +93,8 @@ public class InvestorFavoriteService {
 
         // 减少收藏计数
         Teaser teaser = teaserRepository.findById(teaserId).orElse(null);
-        if (teaser != null && teaser.getFavoriteCount() > 0) {
-            teaser.setFavoriteCount(teaser.getFavoriteCount() - 1);
+        if (teaser != null && (teaser.getFavoriteCount() != null ? teaser.getFavoriteCount() : 0) > 0) {
+            teaser.setFavoriteCount((teaser.getFavoriteCount() != null ? teaser.getFavoriteCount() : 0) - 1);
             teaserRepository.save(teaser);
         }
     }
@@ -105,6 +107,7 @@ public class InvestorFavoriteService {
      * @param size       每页数量
      * @return 收藏分页列表
      */
+    @Transactional(readOnly = true)
     public Page<FavoriteResponse> getFavoriteList(Long investorId, int page, int size) {
         log.info("Getting favorite list for investor: {}", investorId);
 
@@ -137,9 +140,10 @@ public class InvestorFavoriteService {
      */
     @Transactional
     public void updateFavoriteGroup(Long investorId, Long teaserId, String groupName) {
-        // 数据库favorites表中没有group_name字段，暂不支持分组功能
-        log.warn("分组功能暂不支持，需要先在数据库favorites表中添加group_name列");
-        throw new BusinessException(ErrorCode.FEATURE_NOT_AVAILABLE, "收藏分组功能暂不支持");
+        Favorite favorite = favoriteRepository.findByUserIdAndTeaserId(investorId, teaserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.FAVORITE_NOT_FOUND));
+        favorite.setGroupName(groupName);
+        favoriteRepository.save(favorite);
     }
 
     /**
@@ -149,9 +153,7 @@ public class InvestorFavoriteService {
      * @return 分组列表
      */
     public List<String> getFavoriteGroups(Long investorId) {
-        // 数据库favorites表中没有group_name字段，暂不支持分组功能
-        log.warn("分组功能暂不支持，需要先在数据库favorites表中添加group_name列");
-        return Collections.emptyList();
+        return favoriteRepository.findDistinctGroupNamesByUserId(investorId);
     }
 
     /**
@@ -168,18 +170,13 @@ public class InvestorFavoriteService {
      * 转换为收藏响应
      */
     private FavoriteResponse convertToFavoriteResponse(Favorite favorite, Teaser teaser) {
-        Project project = teaser != null ? teaser.getProject() : null;
-
         return FavoriteResponse.builder()
                 .id(favorite.getId())
                 .teaserId(favorite.getTeaserId())
                 .teaserTitle(teaser != null ? teaser.getTitle() : null)
                 .teaserSummary(teaser != null ? teaser.getAiSummary() : null)
-                .industry(project != null && project.getIndustry() != null ? project.getIndustry().name() : null)
-                .financingStage(project != null && project.getFinancingStage() != null ? project.getFinancingStage().name() : null)
-                .financingAmount(project != null ? project.getFinancingAmount() : null)
-                .groupName(null) // 暂不支持分组
-                .note(null) // 暂不支持备注
+                .groupName(favorite.getGroupName())
+                .note(favorite.getNote())
                 .createdAt(favorite.getCreatedAt())
                 .build();
     }

@@ -92,6 +92,7 @@ public class InvestmentAnalysisService {
      * @param investorId 投资人ID
      * @return 分析详情
      */
+    @Transactional(readOnly = true)
     public AnalysisResponse getAnalysis(Long analysisId, Long investorId) {
         InvestmentAnalysis analysis = analysisRepository.findById(analysisId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANALYSIS_NOT_FOUND));
@@ -113,6 +114,7 @@ public class InvestmentAnalysisService {
      * @param size       每页数量
      * @return 分析列表
      */
+    @Transactional(readOnly = true)
     public Page<AnalysisResponse> getAnalysisList(Long investorId, int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<InvestmentAnalysis> analysisPage = analysisRepository.findByInvestorUserIdOrderByCreatedAtDesc(investorId, pageable);
@@ -130,6 +132,7 @@ public class InvestmentAnalysisService {
      * @param investorId 投资人ID
      * @return 分析结果
      */
+    @Transactional(readOnly = true)
     public AnalysisResponse getAnalysisByTeaser(Long teaserId, Long investorId) {
         InvestmentAnalysis analysis = analysisRepository.findByTeaserIdAndInvestorUserId(teaserId, investorId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ANALYSIS_NOT_FOUND));

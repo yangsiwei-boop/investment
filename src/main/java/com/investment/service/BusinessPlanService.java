@@ -96,6 +96,7 @@ public class BusinessPlanService {
      * @param userId    用户ID
      * @return BP列表
      */
+    @Transactional(readOnly = true)
     public List<BusinessPlanResponse> getBusinessPlanList(Long projectId, Long userId) {
         log.info("Getting BP list for project: {}, user: {}", projectId, userId);
 
@@ -120,6 +121,7 @@ public class BusinessPlanService {
      * @param userId 用户ID
      * @return BP响应
      */
+    @Transactional(readOnly = true)
     public BusinessPlanResponse getBusinessPlan(Long bpId, Long userId) {
         BusinessPlan bp = businessPlanRepository.findById(bpId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BUSINESS_PLAN_NOT_FOUND));

@@ -6,10 +6,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * 用户认证主体
@@ -49,7 +51,12 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.emptyList();
+        // 根据userType返回对应的角色
+        if (userType == null) {
+            return Collections.emptyList();
+        }
+        // Spring Security的hasRole()会检查ROLE_前缀，所以需要添加ROLE_前缀
+        return List.of(new SimpleGrantedAuthority("ROLE_" + userType.toUpperCase()));
     }
 
     @Override

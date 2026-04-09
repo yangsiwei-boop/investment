@@ -84,6 +84,7 @@ public class ProjectService {
      * @param size   每页数量
      * @return 项目分页列表
      */
+    @Transactional(readOnly = true)
     public Page<ProjectResponse> getProjectList(Long userId, int page, int size) {
         log.info("Getting project list for user: {}", userId);
 
@@ -100,6 +101,7 @@ public class ProjectService {
      * @param userId    用户ID
      * @return 项目详情
      */
+    @Transactional(readOnly = true)
     public ProjectResponse getProject(Long projectId, Long userId) {
         log.info("Getting project: {}, user: {}", projectId, userId);
 

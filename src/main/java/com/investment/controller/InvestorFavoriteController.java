@@ -117,11 +117,11 @@ public class InvestorFavoriteController {
     @Operation(summary = "更新收藏分组", description = "更新收藏的分组名称")
     public ApiResponse<Void> updateFavoriteGroup(
             @PathVariable Long teaserId,
-            @RequestParam String groupName,
+            @RequestBody java.util.Map<String, String> body,
             @AuthenticationPrincipal UserPrincipal principal) {
         log.info("Updating favorite group for investor: {}, teaser: {}", principal.getId(), teaserId);
 
-        favoriteService.updateFavoriteGroup(principal.getId(), teaserId, groupName);
+        favoriteService.updateFavoriteGroup(principal.getId(), teaserId, body.get("groupName"));
         return ApiResponse.success(null);
     }
 

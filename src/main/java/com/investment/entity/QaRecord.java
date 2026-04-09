@@ -105,7 +105,6 @@ public class QaRecord extends BaseEntity {
     /**
      * 问题状态
      */
-    @Enumerated(EnumType.STRING)
     @Column(name = "question_status", length = 20)
     @Builder.Default
     private QuestionStatus questionStatus = QuestionStatus.PENDING;
@@ -133,13 +132,4 @@ public class QaRecord extends BaseEntity {
      */
     @Column(name = "entrepreneur_viewed_at")
     private LocalDateTime entrepreneurViewedAt;
-
-    /**
-     * 覆盖父类的createdAt和updatedAt字段，数据库表中不存在这些列
-     */
-    @Transient
-    private LocalDateTime createdAt;
-
-    @Transient
-    private LocalDateTime updatedAt;
 }

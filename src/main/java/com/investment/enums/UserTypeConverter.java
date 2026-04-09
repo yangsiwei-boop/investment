@@ -17,7 +17,7 @@ public class UserTypeConverter implements AttributeConverter<UserType, String> {
         if (attribute == null) {
             return null;
         }
-        return attribute.name();
+        return attribute.getCode();  // 返回小写的code
     }
 
     @Override
