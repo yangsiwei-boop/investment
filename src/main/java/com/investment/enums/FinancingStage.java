@@ -23,4 +23,16 @@ public enum FinancingStage {
 
     private final String code;
     private final String description;
+
+    public static FinancingStage fromValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        for (FinancingStage stage : values()) {
+            if (stage.name().equalsIgnoreCase(value) || stage.code.equalsIgnoreCase(value)) {
+                return stage;
+            }
+        }
+        return null;
+    }
 }

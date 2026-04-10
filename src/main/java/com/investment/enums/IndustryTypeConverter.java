@@ -14,7 +14,7 @@ public class IndustryTypeConverter implements AttributeConverter<IndustryType, S
         if (attribute == null) {
             return null;
         }
-        return attribute.name();
+        return attribute.getCode();
     }
 
     @Override

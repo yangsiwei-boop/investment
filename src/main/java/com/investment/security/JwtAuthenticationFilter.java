@@ -6,6 +6,7 @@ import com.investment.entity.User;
 import com.investment.enums.UserStatus;
 import com.investment.repository.UserRepository;
 import com.investment.service.TokenService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
 
 /**
  * JWT认证过滤器
@@ -35,6 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final TokenService tokenService;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -56,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     if (blacklisted) {
                         log.warn("Token is blacklisted");
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                        sendUnauthorizedResponse(response, ErrorCode.TOKEN_INVALID);
                         return;
                     }
 
@@ -85,6 +88,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     log.info("Successfully set authentication for user: {}", userId);
                 } else {
                     log.warn("JWT token validation failed");
+                    sendUnauthorizedResponse(response, ErrorCode.TOKEN_EXPIRED);
+                    return;
                 }
             } else {
                 log.info("No JWT token found in request");
@@ -94,6 +99,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 返回401未授权响应（JSON格式）
+     */
+    private void sendUnauthorizedResponse(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json;charset=UTF-8");
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("code", errorCode.getCode());
+        body.put("message", errorCode.getMessage());
+        body.put("data", null);
+        response.getWriter().write(objectMapper.writeValueAsString(body));
+        response.getWriter().flush();
     }
 
     /**

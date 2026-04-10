@@ -69,7 +69,7 @@ public class ApplicationService {
 
         // 检查是否已申请
         if (applicationRepository.existsByApplicantIdAndTeaserIdAndApplicationType(
-                investorId, request.getTeaserId(), ApplicationType.valueOf(request.getApplicationType()))) {
+                investorId, request.getTeaserId(), ApplicationType.fromValue(request.getApplicationType()))) {
             throw new BusinessException(ErrorCode.APPLICATION_ALREADY_EXISTS);
         }
 
@@ -79,7 +79,7 @@ public class ApplicationService {
                 .project(project)
                 .entrepreneurUser(entrepreneur)
                 .teaserId(request.getTeaserId())
-                .applicationType(ApplicationType.valueOf(request.getApplicationType()))
+                .applicationType(ApplicationType.fromValue(request.getApplicationType()))
                 .applicationReason(request.getReason())
                 .contactInfo(request.getInstitutionName() + " - " + request.getPosition())
                 .applicationStatus(ApplicationStatus.PENDING)

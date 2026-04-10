@@ -14,7 +14,7 @@ public class FinancingStageConverter implements AttributeConverter<FinancingStag
         if (attribute == null) {
             return null;
         }
-        return attribute.name();
+        return attribute.getCode();
     }
 
     @Override

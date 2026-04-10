@@ -24,4 +24,16 @@ public enum IndustryType {
 
     private final String code;
     private final String description;
+
+    public static IndustryType fromValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        for (IndustryType type : values()) {
+            if (type.name().equalsIgnoreCase(value) || type.code.equalsIgnoreCase(value)) {
+                return type;
+            }
+        }
+        return null;
+    }
 }

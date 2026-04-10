@@ -8,6 +8,8 @@ import com.investment.dto.response.investor.TeaserDetailResponse;
 import com.investment.entity.Project;
 import com.investment.entity.Teaser;
 import com.investment.entity.ViewHistory;
+import com.investment.enums.FinancingStage;
+import com.investment.enums.IndustryType;
 import com.investment.enums.TeaserStatus;
 import com.investment.repository.TeaserRepository;
 import com.investment.repository.ViewHistoryRepository;
@@ -67,6 +69,28 @@ public class TeaserSearchService {
                 Predicate titlePredicate = cb.like(root.get("title"), "%" + request.getKeyword() + "%");
                 Predicate summaryPredicate = cb.like(root.get("aiSummary"), "%" + request.getKeyword() + "%");
                 predicates.add(cb.or(titlePredicate, summaryPredicate));
+            }
+
+            // 行业筛选
+            if (request.getIndustries() != null && !request.getIndustries().isEmpty()) {
+                List<IndustryType> industryEnums = request.getIndustries().stream()
+                        .map(IndustryType::fromValue)
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+                if (!industryEnums.isEmpty()) {
+                    predicates.add(root.get("project").get("industry").in(industryEnums));
+                }
+            }
+
+            // 融资阶段筛选
+            if (request.getFinancingStages() != null && !request.getFinancingStages().isEmpty()) {
+                List<FinancingStage> stageEnums = request.getFinancingStages().stream()
+                        .map(FinancingStage::fromValue)
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+                if (!stageEnums.isEmpty()) {
+                    predicates.add(root.get("project").get("financingStage").in(stageEnums));
+                }
             }
 
             // 地区筛选
