@@ -111,8 +111,8 @@ public class FileUploadService {
      * @return 文件URL
      */
     public String getFileUrl(String filePath) {
-        // 返回相对路径，前端根据需要拼接完整URL
-        return filePath;
+        // 返回可通过 WebMvcConfig 静态资源映射访问的 URL 路径
+        return "/uploads/" + filePath;
     }
 
     /**
@@ -156,10 +156,9 @@ public class FileUploadService {
      */
     private String saveFile(MultipartFile file, String dir) {
         try {
-            // 创建上传目录
+            // 创建上传目录（兼容 Windows/Linux）
             String datePath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-            String dirPath = uploadPath + "/" + dir + "/" + datePath;
-            Path directory = Paths.get(dirPath);
+            Path directory = Paths.get(uploadPath, dir, datePath);
             Files.createDirectories(directory);
 
             // 生成文件名
@@ -169,9 +168,11 @@ public class FileUploadService {
 
             // 保存文件
             Path filePath = directory.resolve(newFileName);
-            file.transferTo(filePath.toFile());
+            file.transferTo(filePath);
 
-            return filePath.toString();
+            // 返回相对路径（从 uploadPath 开始），兼容不同操作系统
+            Path basePath = Paths.get(uploadPath).toAbsolutePath();
+            return basePath.relativize(filePath.toAbsolutePath()).toString().replace('\\', '/');
         } catch (IOException e) {
             log.error("Failed to save file", e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);

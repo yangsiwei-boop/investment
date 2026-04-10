@@ -155,7 +155,8 @@ public class BusinessPlanService {
         // 删除文件
         try {
             if (bp.getFileUrl() != null) {
-                Files.deleteIfExists(Paths.get(bp.getFileUrl()));
+                Path filePath = Paths.get(uploadPath, bp.getFileUrl());
+                Files.deleteIfExists(filePath);
             }
         } catch (IOException e) {
             log.error("Failed to delete BP file: {}", bp.getFileUrl(), e);
@@ -210,10 +211,9 @@ public class BusinessPlanService {
      */
     private String saveFile(MultipartFile file, Long projectId) {
         try {
-            // 创建上传目录
+            // 创建上传目录（兼容 Windows/Linux）
             String datePath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-            String dirPath = uploadPath + "/bp/" + projectId + "/" + datePath;
-            Path directory = Paths.get(dirPath);
+            Path directory = Paths.get(uploadPath, "bp", String.valueOf(projectId), datePath);
             Files.createDirectories(directory);
 
             // 生成文件名
@@ -223,9 +223,11 @@ public class BusinessPlanService {
 
             // 保存文件
             Path filePath = directory.resolve(newFileName);
-            file.transferTo(filePath.toFile());
+            file.transferTo(filePath);
 
-            return filePath.toString();
+            // 返回相对路径（从 uploadPath 开始），兼容不同操作系统
+            Path basePath = Paths.get(uploadPath).toAbsolutePath();
+            return basePath.relativize(filePath.toAbsolutePath()).toString().replace('\\', '/');
         } catch (IOException e) {
             log.error("Failed to save file", e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
@@ -241,7 +243,7 @@ public class BusinessPlanService {
                 .projectId(bp.getProject() != null ? bp.getProject().getId() : null)
                 .projectName(projectName)
                 .fileName(bp.getFileName())
-                .fileUrl(bp.getFileUrl())
+                .fileUrl(bp.getFileUrl() != null ? "/uploads/" + bp.getFileUrl() : null)
                 .fileSize(bp.getFileSize() != null ? bp.getFileSize().longValue() : null)
                 .fileFormat(bp.getFileFormat())
                 .uploadStatus(bp.getUploadStatus() != null ? bp.getUploadStatus().name() : null)
