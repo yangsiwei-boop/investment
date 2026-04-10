@@ -57,15 +57,24 @@ public class QaService {
         User investor = userRepository.findById(investorId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        Teaser teaser = request.getTeaserId() != null
-                ? teaserRepository.findById(request.getTeaserId()).orElse(null) : null;
-        Project project = null;
-        User entrepreneur = null;
-        if (teaser != null && teaser.getProject() != null) {
-            project = projectRepository.findById(teaser.getProject().getId()).orElse(null);
+        // 校验 teaser
+        if (request.getTeaserId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "teaserId不能为空");
         }
-        if (project != null) {
-            entrepreneur = project.getEntrepreneurUser();
+        Teaser teaser = teaserRepository.findById(request.getTeaserId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.TEASER_NOT_FOUND));
+
+        // 获取关联项目
+        if (teaser.getProject() == null) {
+            throw new BusinessException(ErrorCode.TEASER_NOT_AVAILABLE, "Teaser未关联项目");
+        }
+        Project project = projectRepository.findById(teaser.getProject().getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+
+        // 获取融资方
+        User entrepreneur = project.getEntrepreneurUser();
+        if (entrepreneur == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "项目未关联融资方用户");
         }
 
         QaRecord qaRecord = QaRecord.builder()
@@ -80,16 +89,15 @@ public class QaService {
 
         qaRecordRepository.save(qaRecord);
 
-        if (entrepreneur != null) {
-            notificationService.createNotification(
-                    entrepreneur.getId(),
-                    com.investment.enums.NotificationType.NEW_QUESTION,
-                    "您收到一个新的问题",
-                    "投资人对您的项目提出了问题",
-                    qaRecord.getId(),
-                    "QA"
-            );
-        }
+        // 发送通知给融资方
+        notificationService.createNotification(
+                entrepreneur.getId(),
+                com.investment.enums.NotificationType.NEW_QUESTION,
+                "您收到一个新的问题",
+                "投资人对您的项目提出了问题",
+                qaRecord.getId(),
+                "QA"
+        );
 
         return convertToResponse(qaRecord);
     }
