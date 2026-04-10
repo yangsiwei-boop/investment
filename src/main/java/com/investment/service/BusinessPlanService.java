@@ -48,6 +48,9 @@ public class BusinessPlanService {
     @Value("${file.upload.max-size:52428800}")
     private long maxFileSize;
 
+    @Value("${server.servlet.context-path:}")
+    private String contextPath;
+
     /**
      * 上传商业计划书
      *
@@ -243,7 +246,7 @@ public class BusinessPlanService {
                 .projectId(bp.getProject() != null ? bp.getProject().getId() : null)
                 .projectName(projectName)
                 .fileName(bp.getFileName())
-                .fileUrl(bp.getFileUrl() != null ? "/uploads/" + bp.getFileUrl() : null)
+                .fileUrl(bp.getFileUrl() != null ? contextPath + "/uploads/" + bp.getFileUrl() : null)
                 .fileSize(bp.getFileSize() != null ? bp.getFileSize().longValue() : null)
                 .fileFormat(bp.getFileFormat())
                 .uploadStatus(bp.getUploadStatus() != null ? bp.getUploadStatus().name() : null)

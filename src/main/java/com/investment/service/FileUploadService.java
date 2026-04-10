@@ -35,6 +35,9 @@ public class FileUploadService {
     @Value("${file.upload.max-size:52428800}")
     private long maxFileSize;
 
+    @Value("${server.servlet.context-path:}")
+    private String contextPath;
+
     private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
             "jpg", "jpeg", "png", "gif", "bmp", "webp"
     );
@@ -111,8 +114,9 @@ public class FileUploadService {
      * @return 文件URL
      */
     public String getFileUrl(String filePath) {
-        // 返回可通过 WebMvcConfig 静态资源映射访问的 URL 路径
-        return "/uploads/" + filePath;
+        // 返回可通过 WebMvcConfig 静态资源映射访问的 URL 路径（包含 context-path）
+        String prefix = contextPath != null && !contextPath.isEmpty() ? contextPath : "";
+        return prefix + "/uploads/" + filePath;
     }
 
     /**
