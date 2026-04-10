@@ -81,6 +81,8 @@ public class SecurityConfig {
                         ).permitAll()
                         // 公开配置
                         .requestMatchers(HttpMethod.GET, "/common/configs").permitAll()
+                        // 上传文件静态资源访问
+                        .requestMatchers("/uploads/**").permitAll()
                         // OPTIONS请求
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // 其他请求需要认证
