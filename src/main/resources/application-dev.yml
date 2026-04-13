@@ -4,9 +4,9 @@ spring:
       on-profile: dev
 
   datasource:
-    url: jdbc:mysql://36.150.231.203:3306/investment?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: ${DB_PASSWORD:root_PASS866.}
+    url: jdbc:mysql://120.24.176.90:33071/investment?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: tqgmysql
+    password: ${DB_PASSWORD:8rfrrK7tiy}
 
   jpa:
     show-sql: true
@@ -16,9 +16,9 @@ spring:
 
   data:
     redis:
-      database: 11
-      host: 117.72.125.246
-      port: 63790
+      database: 1
+      host: 120.24.176.90
+      port: 63781
       password: ${REDIS_PASSWORD:}
       timeout: 10s
       lettuce:

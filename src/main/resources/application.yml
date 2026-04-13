@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 28080
   servlet:
     context-path: /api/v1
 
@@ -11,9 +11,9 @@ spring:
     active: dev
 
   datasource:
-    url: jdbc:mysql://36.150.231.203:3306/investment?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: ${DB_PASSWORD:root123456}
+    url: jdbc:mysql://120.24.176.90:33071/investment?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: tqgmysql
+    password: ${DB_PASSWORD:8rfrrK7tiy}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
