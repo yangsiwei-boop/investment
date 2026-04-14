@@ -182,4 +182,13 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
      */
     @Query("SELECT a FROM Application a WHERE a.entrepreneurUser.id = :entrepreneurId AND a.applicationStatus = :status ORDER BY a.createdAt DESC")
     Page<Application> findByEntrepreneurIdAndStatus(@Param("entrepreneurId") Long entrepreneurId, @Param("status") ApplicationStatus status, Pageable pageable);
+
+    /**
+     * 根据状态查找所有申请（管理端）
+     *
+     * @param status 状态
+     * @param pageable 分页参数
+     * @return 申请分页列表
+     */
+    Page<Application> findByApplicationStatusOrderByCreatedAtDesc(ApplicationStatus status, Pageable pageable);
 }

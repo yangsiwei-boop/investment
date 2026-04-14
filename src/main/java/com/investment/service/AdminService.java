@@ -2,12 +2,14 @@ package com.investment.service;
 
 import com.investment.common.exception.BusinessException;
 import com.investment.common.exception.ErrorCode;
+import com.investment.dto.request.admin.ApplicationReviewRequest;
 import com.investment.dto.request.admin.RoleCreateRequest;
 import com.investment.dto.request.admin.RoleUpdateRequest;
 import com.investment.dto.request.admin.UserStatusUpdateRequest;
 import com.investment.dto.request.admin.VerificationReviewRequest;
 import com.investment.dto.response.admin.*;
 import com.investment.entity.*;
+import com.investment.enums.ApplicationStatus;
 import com.investment.enums.FinancingStage;
 import com.investment.enums.IndustryType;
 import com.investment.enums.UserStatus;
@@ -262,6 +264,114 @@ public class AdminService {
         return idCard.substring(0, 6) + "****" + idCard.substring(idCard.length() - 4);
     }
 
+    // ============================================
+    // BP申请审核管理
+    // ============================================
+
+    /**
+     * 获取申请列表
+     *
+     * @param status 状态筛选
+     * @param page   页码
+     * @param size   每页数量
+     * @return 申请列表
+     */
+    public Page<ApplicationDetailResponse> getApplicationList(String status, int page, int size) {
+        log.info("Getting application list, status: {}", status);
+
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Application> applicationPage;
+        if (status != null && !status.isEmpty()) {
+            applicationPage = applicationRepository.findByApplicationStatusOrderByCreatedAtDesc(
+                    ApplicationStatus.valueOf(status), pageable);
+        } else {
+            applicationPage = applicationRepository.findAll(pageable);
+        }
+
+        return applicationPage.map(this::convertToApplicationResponse);
+    }
+
+    /**
+     * 获取申请详情
+     *
+     * @param applicationId 申请ID
+     * @return 申请详情
+     */
+    public ApplicationDetailResponse getApplicationDetail(Long applicationId) {
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.APPLICATION_NOT_FOUND));
+
+        return convertToApplicationResponse(application);
+    }
+
+    /**
+     * 审核申请
+     *
+     * @param applicationId 申请ID
+     * @param adminId       管理员ID
+     * @param request       审核请求
+     * @return 申请详情
+     */
+    @Transactional
+    public ApplicationDetailResponse reviewApplication(Long applicationId, Long adminId,
+                                                        ApplicationReviewRequest request) {
+        log.info("Reviewing application: {}, approved: {}", applicationId, request.isApproved());
+
+        Application application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.APPLICATION_NOT_FOUND));
+
+        application.setApplicationStatus(request.isApproved() ? ApplicationStatus.APPROVED : ApplicationStatus.REJECTED);
+        application.setAdminNotes(request.getComment());
+        application.setReviewedBy(userRepository.getReferenceById(adminId));
+        application.setReviewedAt(LocalDateTime.now());
+
+        if (request.isApproved()) {
+            // 批准后设置30天有效期
+            application.setExpiresAt(LocalDateTime.now().plusDays(30));
+        } else {
+            application.setRejectionReason(request.getComment());
+        }
+
+        applicationRepository.save(application);
+
+        return convertToApplicationResponse(application);
+    }
+
+    /**
+     * 转换为申请详情响应
+     */
+    private ApplicationDetailResponse convertToApplicationResponse(Application application) {
+        User investor = application.getInvestorUser();
+        User entrepreneur = application.getEntrepreneurUser();
+        Project project = application.getProject();
+
+        return ApplicationDetailResponse.builder()
+                .id(application.getId())
+                .applicationType(application.getApplicationType() != null
+                        ? application.getApplicationType().name() : null)
+                .investorUserId(investor != null ? investor.getId() : null)
+                .investorNickname(investor != null ? investor.getRealName() : null)
+                .investorPhone(investor != null ? investor.getPhone() : null)
+                .projectId(project != null ? project.getId() : null)
+                .projectName(project != null ? project.getProjectName() : null)
+                .entrepreneurUserId(entrepreneur != null ? entrepreneur.getId() : null)
+                .entrepreneurNickname(entrepreneur != null ? entrepreneur.getRealName() : null)
+                .teaserId(application.getTeaserId())
+                .contactInfo(application.getContactInfo())
+                .status(application.getApplicationStatus() != null
+                        ? application.getApplicationStatus().name() : null)
+                .applicationReason(application.getApplicationReason())
+                .rejectionReason(application.getRejectionReason())
+                .adminNotes(application.getAdminNotes())
+                .reviewerId(application.getReviewedBy() != null
+                        ? application.getReviewedBy().getId() : null)
+                .reviewedAt(application.getReviewedAt())
+                .expiresAt(application.getExpiresAt())
+                .createdAt(application.getCreatedAt())
+                .build();
+    }
+
     /**
      * 获取权限列表
      *
@@ -423,15 +533,30 @@ public class AdminService {
     /**
      * 获取数据统计
      *
+     * @param period 统计周期：today(今天)、7d(近7天)、30d(近30天)
      * @return 统计数据
      */
-    public StatisticsResponse getStatistics() {
-        log.info("Getting admin statistics");
+    public StatisticsResponse getStatistics(String period) {
+        log.info("Getting admin statistics, period: {}", period);
 
         LocalDate today = LocalDate.now();
         LocalDateTime todayStart = today.atStartOfDay();
         LocalDateTime weekStart = today.minusDays(7).atStartOfDay();
         LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+
+        // 根据 period 确定趋势天数
+        int trendDays;
+        switch (period) {
+            case "today":
+                trendDays = 1;
+                break;
+            case "30d":
+                trendDays = 30;
+                break;
+            default:
+                trendDays = 7;
+                break;
+        }
 
         // 概览统计
         StatisticsResponse.OverviewStats overview = StatisticsResponse.OverviewStats.builder()
@@ -450,44 +575,17 @@ public class AdminService {
                         com.investment.enums.ApplicationStatus.PENDING))
                 .build();
 
-        // 用户增长趋势（近7天）
-        List<StatisticsResponse.TrendItem> userTrend = new ArrayList<>();
-        for (int i = 6; i >= 0; i--) {
-            LocalDate date = today.minusDays(i);
-            LocalDateTime dayStart = date.atStartOfDay();
-            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
-            Long count = userRepository.countByCreatedAtBetween(dayStart, dayEnd);
-            userTrend.add(StatisticsResponse.TrendItem.builder()
-                    .date(date.format(DateTimeFormatter.ISO_DATE))
-                    .value(count != null ? count : 0L)
-                    .build());
-        }
+        // 用户增长趋势
+        List<StatisticsResponse.TrendItem> userTrend = buildTrend(today, trendDays, (dayStart, dayEnd) ->
+                userRepository.countByCreatedAtBetween(dayStart, dayEnd));
 
-        // 项目趋势（近7天）
-        List<StatisticsResponse.TrendItem> projectTrend = new ArrayList<>();
-        for (int i = 6; i >= 0; i--) {
-            LocalDate date = today.minusDays(i);
-            LocalDateTime dayStart = date.atStartOfDay();
-            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
-            Long count = projectRepository.countByCreatedAtBetween(dayStart, dayEnd);
-            projectTrend.add(StatisticsResponse.TrendItem.builder()
-                    .date(date.format(DateTimeFormatter.ISO_DATE))
-                    .value(count != null ? count : 0L)
-                    .build());
-        }
+        // 项目趋势
+        List<StatisticsResponse.TrendItem> projectTrend = buildTrend(today, trendDays, (dayStart, dayEnd) ->
+                projectRepository.countByCreatedAtBetween(dayStart, dayEnd));
 
-        // 浏览趋势（近7天）
-        List<StatisticsResponse.TrendItem> viewTrend = new ArrayList<>();
-        for (int i = 6; i >= 0; i--) {
-            LocalDate date = today.minusDays(i);
-            LocalDateTime dayStart = date.atStartOfDay();
-            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
-            Long count = viewHistoryRepository.countByCreatedAtBetween(dayStart, dayEnd);
-            viewTrend.add(StatisticsResponse.TrendItem.builder()
-                    .date(date.format(DateTimeFormatter.ISO_DATE))
-                    .value(count != null ? count : 0L)
-                    .build());
-        }
+        // 浏览趋势
+        List<StatisticsResponse.TrendItem> viewTrend = buildTrend(today, trendDays, (dayStart, dayEnd) ->
+                viewHistoryRepository.countByCreatedAtBetween(dayStart, dayEnd));
 
         // 行业分布
         List<StatisticsResponse.DistributionItem> industryDistribution = new ArrayList<>();
@@ -542,5 +640,29 @@ public class AdminService {
 
     private Long safeLong(Long value) {
         return value != null ? value : 0L;
+    }
+
+    /**
+     * 构建趋势数据
+     *
+     * @param today    今天日期
+     * @param days     天数
+     * @param counter  按天计数函数
+     * @return 趋势数据列表
+     */
+    private List<StatisticsResponse.TrendItem> buildTrend(LocalDate today, int days,
+            java.util.function.BiFunction<LocalDateTime, LocalDateTime, Long> counter) {
+        List<StatisticsResponse.TrendItem> trend = new ArrayList<>();
+        for (int i = days - 1; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            LocalDateTime dayStart = date.atStartOfDay();
+            LocalDateTime dayEnd = date.plusDays(1).atStartOfDay();
+            Long count = counter.apply(dayStart, dayEnd);
+            trend.add(StatisticsResponse.TrendItem.builder()
+                    .date(date.format(DateTimeFormatter.ISO_DATE))
+                    .value(count != null ? count : 0L)
+                    .build());
+        }
+        return trend;
     }
 }

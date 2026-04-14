@@ -1,6 +1,7 @@
 package com.investment.controller;
 
 import com.investment.common.response.ApiResponse;
+import com.investment.dto.request.admin.ApplicationReviewRequest;
 import com.investment.dto.request.admin.RoleCreateRequest;
 import com.investment.dto.request.admin.UserStatusUpdateRequest;
 import com.investment.dto.request.admin.VerificationReviewRequest;
@@ -150,6 +151,67 @@ public class AdminController {
         return ApiResponse.success(response);
     }
 
+    // ============================================
+    // BP申请审核管理
+    // ============================================
+
+    /**
+     * 获取申请列表
+     *
+     * @param status 状态筛选
+     * @param page   页码
+     * @param size   每页数量
+     * @return 申请列表
+     */
+    @GetMapping("/applications")
+    @Operation(summary = "获取申请列表", description = "获取BP申请/联系企业申请列表")
+    public ApiResponse<Page<ApplicationDetailResponse>> getApplicationList(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("Getting application list, status: {}", status);
+
+        Page<ApplicationDetailResponse> applications = adminService.getApplicationList(status, page, size);
+        return ApiResponse.success(applications);
+    }
+
+    /**
+     * 获取申请详情
+     *
+     * @param applicationId 申请ID
+     * @return 申请详情
+     */
+    @GetMapping("/applications/{applicationId}")
+    @Operation(summary = "获取申请详情", description = "获取指定BP申请的详细信息")
+    public ApiResponse<ApplicationDetailResponse> getApplicationDetail(
+            @PathVariable Long applicationId) {
+        log.info("Getting application detail: {}", applicationId);
+
+        ApplicationDetailResponse response = adminService.getApplicationDetail(applicationId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 审核申请
+     *
+     * @param applicationId 申请ID
+     * @param request       审核请求
+     * @param principal     当前用户
+     * @return 申请详情
+     */
+    @PostMapping("/applications/{applicationId}/review")
+    @Operation(summary = "审核申请", description = "审核BP申请或联系企业申请")
+    public ApiResponse<ApplicationDetailResponse> reviewApplication(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody ApplicationReviewRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        log.info("Reviewing application: {}, admin: {}", applicationId, principal.getId());
+
+        ApplicationDetailResponse response = adminService.reviewApplication(
+                applicationId, principal.getId(), request);
+        return ApiResponse.success(response);
+    }
+
     /**
      * 获取权限列表
      *
@@ -215,14 +277,16 @@ public class AdminController {
     /**
      * 获取数据统计
      *
+     * @param period 统计周期：today(今天)、7d(近7天)、30d(近30天)，默认7d
      * @return 统计数据
      */
     @GetMapping("/statistics")
-    @Operation(summary = "获取数据统计", description = "获取系统统计数据（概览、趋势、分布）")
-    public ApiResponse<StatisticsResponse> getStatistics() {
-        log.info("Getting admin statistics");
+    @Operation(summary = "获取数据统计", description = "获取系统统计数据（概览、趋势、分布），支持按周期查询")
+    public ApiResponse<StatisticsResponse> getStatistics(
+            @RequestParam(defaultValue = "7d") String period) {
+        log.info("Getting admin statistics, period: {}", period);
 
-        StatisticsResponse response = adminService.getStatistics();
+        StatisticsResponse response = adminService.getStatistics(period);
         return ApiResponse.success(response);
     }
 }
