@@ -24,7 +24,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 项目服务
@@ -52,23 +53,38 @@ public class ProjectService {
     public ProjectResponse createProject(Long userId, ProjectCreateRequest request) {
         log.info("Creating project for user: {}", userId);
 
-        // 获取融资用户
         User entrepreneur = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 创建项目
         Project project = Project.builder()
                 .entrepreneurUser(entrepreneur)
-                .projectName(request.getName())
-                .oneLineDescription(request.getSummary())
-                .industry(parseIndustryType(request.getIndustry()))
-                .financingStage(parseFinancingStage(request.getFinancingStage()))
-                .financingAmount(request.getFinancingAmount())
+                .projectName(request.getProjectName())
+                .oneLineDescription(request.getOneLineDescription())
+                .industry(IndustryType.fromValue(request.getIndustry()))
                 .businessDescription(request.getBusinessDescription())
-                .businessModel(request.getBusinessModel())
-                .competitiveAdvantage(request.getCompetitiveAdvantage())
                 .location(request.getLocation())
-                .status(ProjectStatus.DRAFT)
+                .companyFoundedDate(request.getCompanyFoundedDate())
+                .teamSize(request.getTeamSize())
+                .officeAddress(request.getOfficeAddress())
+                .companyWebsite(request.getCompanyWebsite())
+                .financingStage(FinancingStage.fromValue(request.getFinancingStage()))
+                .financingAmount(request.getFinancingAmount())
+                .equityPercentage(request.getEquityPercentage())
+                .financingHistory(request.getFinancingHistory())
+                .marketSize(request.getMarketSize())
+                .competitiveAdvantage(request.getCompetitiveAdvantage())
+                .businessModel(request.getBusinessModel())
+                .targetMarket(request.getTargetMarket())
+                .revenueYtd(request.getRevenueYtd())
+                .revenueLastYear(request.getRevenueLastYear())
+                .grossMargin(request.getGrossMargin())
+                .contactPerson(request.getContactPerson())
+                .contactPhone(request.getContactPhone())
+                .contactEmail(request.getContactEmail())
+                .isAnonymous(request.getIsAnonymous() != null ? request.getIsAnonymous() : true)
+                .iconEmoji(request.getIconEmoji())
+                .tags(convertTagsToString(request.getTags()))
+                .status(resolveStatus(request.getStatus()))
                 .build();
 
         projectRepository.save(project);
@@ -108,7 +124,6 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // 验证权限
         if (!project.getEntrepreneurUser().getId().equals(userId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
@@ -131,21 +146,92 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // 验证权限
         if (!project.getEntrepreneurUser().getId().equals(userId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        // 更新项目信息
-        project.setProjectName(request.getName());
-        project.setOneLineDescription(request.getSummary());
-        project.setIndustry(parseIndustryType(request.getIndustry()));
-        project.setFinancingStage(parseFinancingStage(request.getFinancingStage()));
-        project.setFinancingAmount(request.getFinancingAmount());
-        project.setBusinessDescription(request.getBusinessDescription());
-        project.setBusinessModel(request.getBusinessModel());
-        project.setCompetitiveAdvantage(request.getCompetitiveAdvantage());
-        project.setLocation(request.getLocation());
+        // 更新所有字段（前端传什么更新什么）
+        if (request.getProjectName() != null) {
+            project.setProjectName(request.getProjectName());
+        }
+        if (request.getOneLineDescription() != null) {
+            project.setOneLineDescription(request.getOneLineDescription());
+        }
+        if (request.getIndustry() != null) {
+            project.setIndustry(IndustryType.fromValue(request.getIndustry()));
+        }
+        if (request.getBusinessDescription() != null) {
+            project.setBusinessDescription(request.getBusinessDescription());
+        }
+        if (request.getLocation() != null) {
+            project.setLocation(request.getLocation());
+        }
+        if (request.getCompanyFoundedDate() != null) {
+            project.setCompanyFoundedDate(request.getCompanyFoundedDate());
+        }
+        if (request.getTeamSize() != null) {
+            project.setTeamSize(request.getTeamSize());
+        }
+        if (request.getOfficeAddress() != null) {
+            project.setOfficeAddress(request.getOfficeAddress());
+        }
+        if (request.getCompanyWebsite() != null) {
+            project.setCompanyWebsite(request.getCompanyWebsite());
+        }
+        if (request.getFinancingStage() != null) {
+            project.setFinancingStage(FinancingStage.fromValue(request.getFinancingStage()));
+        }
+        if (request.getFinancingAmount() != null) {
+            project.setFinancingAmount(request.getFinancingAmount());
+        }
+        if (request.getEquityPercentage() != null) {
+            project.setEquityPercentage(request.getEquityPercentage());
+        }
+        if (request.getFinancingHistory() != null) {
+            project.setFinancingHistory(request.getFinancingHistory());
+        }
+        if (request.getMarketSize() != null) {
+            project.setMarketSize(request.getMarketSize());
+        }
+        if (request.getCompetitiveAdvantage() != null) {
+            project.setCompetitiveAdvantage(request.getCompetitiveAdvantage());
+        }
+        if (request.getBusinessModel() != null) {
+            project.setBusinessModel(request.getBusinessModel());
+        }
+        if (request.getTargetMarket() != null) {
+            project.setTargetMarket(request.getTargetMarket());
+        }
+        if (request.getRevenueYtd() != null) {
+            project.setRevenueYtd(request.getRevenueYtd());
+        }
+        if (request.getRevenueLastYear() != null) {
+            project.setRevenueLastYear(request.getRevenueLastYear());
+        }
+        if (request.getGrossMargin() != null) {
+            project.setGrossMargin(request.getGrossMargin());
+        }
+        if (request.getContactPerson() != null) {
+            project.setContactPerson(request.getContactPerson());
+        }
+        if (request.getContactPhone() != null) {
+            project.setContactPhone(request.getContactPhone());
+        }
+        if (request.getContactEmail() != null) {
+            project.setContactEmail(request.getContactEmail());
+        }
+        if (request.getIsAnonymous() != null) {
+            project.setIsAnonymous(request.getIsAnonymous());
+        }
+        if (request.getIconEmoji() != null) {
+            project.setIconEmoji(request.getIconEmoji());
+        }
+        if (request.getTags() != null) {
+            project.setTags(convertTagsToString(request.getTags()));
+        }
+        if (request.getStatus() != null) {
+            project.setStatus(resolveStatus(request.getStatus()));
+        }
 
         projectRepository.save(project);
 
@@ -165,12 +251,10 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
 
-        // 验证权限
         if (!project.getEntrepreneurUser().getId().equals(userId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
 
-        // 软删除 - 更新状态为ARCHIVED
         project.setStatus(ProjectStatus.ARCHIVED);
         projectRepository.save(project);
     }
@@ -179,25 +263,37 @@ public class ProjectService {
      * 转换为响应DTO
      */
     private ProjectResponse convertToResponse(Project project) {
-        // 检查是否有BP
         boolean hasBp = businessPlanRepository.existsByProjectId(project.getId());
-
-        // 检查是否有Teaser
         boolean hasTeaser = teaserRepository.existsByProjectId(project.getId());
 
         return ProjectResponse.builder()
                 .id(project.getId())
-                .name(project.getProjectName())
-                .summary(project.getOneLineDescription())
-                .industry(project.getIndustry() != null ? project.getIndustry().name() : null)
-                .financingStage(project.getFinancingStage() != null ? project.getFinancingStage().name() : null)
+                .projectName(project.getProjectName())
+                .oneLineDescription(project.getOneLineDescription())
+                .industry(project.getIndustry() != null ? project.getIndustry().getCode() : null)
+                .financingStage(project.getFinancingStage() != null ? project.getFinancingStage().getCode() : null)
                 .financingAmount(project.getFinancingAmount())
-                .financingPurpose(null) // Project 实体中没有此字段
-                .location(project.getLocation())
                 .businessDescription(project.getBusinessDescription())
                 .businessModel(project.getBusinessModel())
-                .targetMarket(null) // Project 实体中没有此字段
+                .targetMarket(project.getTargetMarket())
                 .competitiveAdvantage(project.getCompetitiveAdvantage())
+                .location(project.getLocation())
+                .companyFoundedDate(project.getCompanyFoundedDate())
+                .officeAddress(project.getOfficeAddress())
+                .companyWebsite(project.getCompanyWebsite())
+                .teamSize(project.getTeamSize())
+                .equityPercentage(project.getEquityPercentage())
+                .financingHistory(project.getFinancingHistory())
+                .marketSize(project.getMarketSize())
+                .revenueYtd(project.getRevenueYtd())
+                .revenueLastYear(project.getRevenueLastYear())
+                .grossMargin(project.getGrossMargin())
+                .contactPerson(project.getContactPerson())
+                .contactPhone(project.getContactPhone())
+                .contactEmail(project.getContactEmail())
+                .isAnonymous(project.getIsAnonymous())
+                .iconEmoji(project.getIconEmoji())
+                .tags(convertStringToTags(project.getTags()))
                 .status(project.getStatus() != null ? project.getStatus().name() : null)
                 .hasBp(hasBp)
                 .hasTeaser(hasTeaser)
@@ -207,32 +303,60 @@ public class ProjectService {
     }
 
     /**
-     * 解析行业类型
+     * 解析项目状态
      */
-    private IndustryType parseIndustryType(String industry) {
-        if (industry == null || industry.isEmpty()) {
-            return null;
+    private ProjectStatus resolveStatus(String status) {
+        if (status == null || status.isEmpty()) {
+            return ProjectStatus.DRAFT;
         }
         try {
-            return IndustryType.valueOf(industry);
+            return ProjectStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid industry type: {}", industry);
-            return null;
+            log.warn("Invalid project status: {}, defaulting to DRAFT", status);
+            return ProjectStatus.DRAFT;
         }
     }
 
     /**
-     * 解析融资阶段
+     * 将标签列表转为 JSON 字符串存储
      */
-    private FinancingStage parseFinancingStage(String financingStage) {
-        if (financingStage == null || financingStage.isEmpty()) {
+    private String convertTagsToString(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
             return null;
         }
-        try {
-            return FinancingStage.valueOf(financingStage);
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid financing stage: {}", financingStage);
-            return null;
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < tags.size(); i++) {
+            if (i > 0) {
+                sb.append(",");
+            }
+            sb.append("\"").append(tags.get(i).replace("\"", "\\\"")).append("\"");
         }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    /**
+     * 将 JSON 字符串转为标签列表
+     */
+    private List<String> convertStringToTags(String tags) {
+        if (tags == null || tags.isEmpty()) {
+            return Collections.emptyList();
+        }
+        // 简单解析 ["tag1","tag2"] 格式
+        String content = tags.trim();
+        if (content.startsWith("[") && content.endsWith("]")) {
+            content = content.substring(1, content.length() - 1);
+        }
+        if (content.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> result = new java.util.ArrayList<>();
+        for (String tag : content.split(",")) {
+            String cleaned = tag.trim().replace("\"", "");
+            if (!cleaned.isEmpty()) {
+                result.add(cleaned);
+            }
+        }
+        return result;
     }
 }

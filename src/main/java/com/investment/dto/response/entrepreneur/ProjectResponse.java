@@ -6,7 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 项目响应DTO
@@ -19,20 +21,17 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ProjectResponse {
 
-    /**
-     * 项目ID
-     */
     private Long id;
 
     /**
      * 项目名称
      */
-    private String name;
+    private String projectName;
 
     /**
-     * 一句话介绍
+     * 一句话描述
      */
-    private String summary;
+    private String oneLineDescription;
 
     /**
      * 所属行业
@@ -50,17 +49,7 @@ public class ProjectResponse {
     private BigDecimal financingAmount;
 
     /**
-     * 融资用途
-     */
-    private String financingPurpose;
-
-    /**
-     * 公司所在地
-     */
-    private String location;
-
-    /**
-     * 商业描述
+     * 业务描述
      */
     private String businessDescription;
 
@@ -78,6 +67,91 @@ public class ProjectResponse {
      * 竞争优势
      */
     private String competitiveAdvantage;
+
+    /**
+     * 项目所在地
+     */
+    private String location;
+
+    /**
+     * 公司成立日期
+     */
+    private LocalDate companyFoundedDate;
+
+    /**
+     * 办公地址
+     */
+    private String officeAddress;
+
+    /**
+     * 公司官网
+     */
+    private String companyWebsite;
+
+    /**
+     * 团队规模
+     */
+    private Integer teamSize;
+
+    /**
+     * 出让股权比例（%）
+     */
+    private BigDecimal equityPercentage;
+
+    /**
+     * 融资历史
+     */
+    private String financingHistory;
+
+    /**
+     * 市场规模
+     */
+    private String marketSize;
+
+    /**
+     * 当年营收（万元）
+     */
+    private BigDecimal revenueYtd;
+
+    /**
+     * 去年营收（万元）
+     */
+    private BigDecimal revenueLastYear;
+
+    /**
+     * 毛利率（%）
+     */
+    private BigDecimal grossMargin;
+
+    /**
+     * 联系人
+     */
+    private String contactPerson;
+
+    /**
+     * 联系电话
+     */
+    private String contactPhone;
+
+    /**
+     * 联系邮箱
+     */
+    private String contactEmail;
+
+    /**
+     * 是否匿名显示
+     */
+    private Boolean isAnonymous;
+
+    /**
+     * 图标表情
+     */
+    private String iconEmoji;
+
+    /**
+     * 标签列表
+     */
+    private List<String> tags;
 
     /**
      * 项目状态

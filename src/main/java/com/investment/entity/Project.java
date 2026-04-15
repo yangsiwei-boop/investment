@@ -222,4 +222,22 @@ public class Project extends BaseEntity {
     @Column(name = "favorite_count")
     @Builder.Default
     private Integer favoriteCount = 0;
+
+    /**
+     * 目标市场
+     */
+    @Column(name = "target_market", columnDefinition = "TEXT")
+    private String targetMarket;
+
+    /**
+     * 图标表情
+     */
+    @Column(name = "icon_emoji", length = 10)
+    private String iconEmoji;
+
+    /**
+     * 标签列表（JSON数组存储）
+     */
+    @Column(name = "tags", length = 1000)
+    private String tags;
 }
