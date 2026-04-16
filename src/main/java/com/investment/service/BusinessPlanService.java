@@ -217,7 +217,14 @@ public class BusinessPlanService {
             // 创建上传目录（兼容 Windows/Linux）
             String datePath = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
             Path directory = Paths.get(uploadPath, "bp", String.valueOf(projectId), datePath);
+
+            // 先检查并确保父目录存在
+            Path uploadBasePath = Paths.get(uploadPath).toAbsolutePath();
+            log.info("Upload base path: {}", uploadBasePath);
+            log.info("Target directory: {}", directory.toAbsolutePath());
+
             Files.createDirectories(directory);
+            log.info("Directory created successfully: {}", directory.toAbsolutePath());
 
             // 生成文件名
             String originalFileName = file.getOriginalFilename();
@@ -226,14 +233,17 @@ public class BusinessPlanService {
 
             // 保存文件
             Path filePath = directory.resolve(newFileName);
+            log.info("Saving file to: {}", filePath.toAbsolutePath());
             file.transferTo(filePath);
+            log.info("File saved successfully: {}", filePath.toAbsolutePath());
 
             // 返回相对路径（从 uploadPath 开始），兼容不同操作系统
-            Path basePath = Paths.get(uploadPath).toAbsolutePath();
-            return basePath.relativize(filePath.toAbsolutePath()).toString().replace('\\', '/');
+            return uploadBasePath.relativize(filePath.toAbsolutePath()).toString().replace('\\', '/');
         } catch (IOException e) {
-            log.error("Failed to save file", e);
-            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED);
+            log.error("Failed to save file. Upload path: {}, Project: {}, File: {}",
+                    uploadPath, projectId, file.getOriginalFilename(), e);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED,
+                    "文件保存失败: " + e.getMessage() + "，上传路径: " + uploadPath);
         }
     }
 
